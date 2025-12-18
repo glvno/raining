@@ -10,8 +10,8 @@ const API_BASE = "/api"; // proxy to Phoenix
 
 const App: React.FC = () => {
 	const [mode, setMode] = useState<"login" | "register">("login");
-	const [email, setEmail] = useState("demo@example.com");
-	const [password, setPassword] = useState("test");
+	const [email, setEmail] = useState("");
+	const [password, setPassword] = useState("");
 	const [token, setToken] = useState<string | null>(null);
 	const [me, setMe] = useState<User | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -157,7 +157,6 @@ const App: React.FC = () => {
 
 	return (
 		<div style={{ maxWidth: 480, margin: "2rem auto", fontFamily: "sans-serif" }}>
-			<h1>Phoenix auth demo</h1>
 
 			<div style={{ marginBottom: "1rem" }}>
 				<button
@@ -215,7 +214,7 @@ const App: React.FC = () => {
 					{loading
 						? "Working..."
 						: mode === "login"
-							? "Login and fetch /me"
+							? "Login"
 							: "Register"}
 				</button>
 
