@@ -13,8 +13,22 @@ defmodule RainingWeb.Router do
     plug :fetch_current_scope_for_user
   end
 
+  pipeline :auth do
+    plug :accepts, ["json"]
+    plug Raining.UserAuth, :fetch_current_scope_for_user
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
+  end
+
+  scope "/api", RainingWeb do
+    pipe_through :api
+
+    post "/users/register", UserRegistrationController, :create
+    post "/users/login", UserSessionController, :create
+    delete "/users/logout", UserSessionController, :delete
+    get "/me", UserController, :show
   end
 
   scope "/", RainingWeb do
@@ -22,11 +36,6 @@ defmodule RainingWeb.Router do
 
     get "/", PageController, :home
   end
-
-  # Other scopes may use custom stacks.
-  # scope "/api", RainingWeb do
-  #   pipe_through :api
-  # end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:raining, :dev_routes) do
@@ -47,27 +56,27 @@ defmodule RainingWeb.Router do
 
   ## Authentication routes
 
-  scope "/", RainingWeb do
-    pipe_through [:browser, :redirect_if_user_is_authenticated]
-
-    get "/users/register", UserRegistrationController, :new
-    post "/users/register", UserRegistrationController, :create
-  end
-
-  scope "/", RainingWeb do
-    pipe_through [:browser, :require_authenticated_user]
-
-    get "/users/settings", UserSettingsController, :edit
-    put "/users/settings", UserSettingsController, :update
-    get "/users/settings/confirm-email/:token", UserSettingsController, :confirm_email
-  end
-
-  scope "/", RainingWeb do
-    pipe_through [:browser]
-
-    get "/users/log-in", UserSessionController, :new
-    get "/users/log-in/:token", UserSessionController, :confirm
-    post "/users/log-in", UserSessionController, :create
-    delete "/users/log-out", UserSessionController, :delete
-  end
+  # scope "/", RainingWeb do
+  #   pipe_through [:browser, :redirect_if_user_is_authenticated]
+  #
+  #   get "/users/register", UserRegistrationController, :new
+  #   post "/users/register", UserRegistrationController, :create
+  # end
+  #
+  # scope "/", RainingWeb do
+  #   pipe_through [:browser, :require_authenticated_user]
+  #
+  #   get "/users/settings", UserSettingsController, :edit
+  #   put "/users/settings", UserSettingsController, :update
+  #   get "/users/settings/confirm-email/:token", UserSettingsController, :confirm_email
+  # end
+  #
+  # scope "/", RainingWeb do
+  #   pipe_through [:browser]
+  #
+  #   get "/users/log-in", UserSessionController, :new
+  #   get "/users/log-in/:token", UserSessionController, :confirm
+  #   post "/users/log-in", UserSessionController, :create
+  #   delete "/users/log-out", UserSessionController, :delete
+  # end
 end
