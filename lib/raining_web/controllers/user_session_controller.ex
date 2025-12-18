@@ -23,4 +23,9 @@ defmodule RainingWeb.UserSessionController do
         })
     end
   end
+
+  def delete(conn, _params) do
+    RainingWeb.UserAuth.log_out_user(conn)
+    |> send_resp(:no_content, "")
+  end
 end

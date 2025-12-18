@@ -25,6 +25,21 @@ defmodule RainingWeb.UserAuth do
     end
   end
 
+  def log_out_user(conn) do
+    token =
+      case get_req_header(conn, "authorization") do
+        ["Bearer " <> t] -> t
+        _ -> nil
+      end
+
+    if token do
+      Raining.Accounts.delete_user_session_token(token)
+    end
+
+    conn
+    |> put_status(:no_content)
+  end
+
   # Use the generated Accounts token logic; adjust names if needed
   defp verify_api_token(token) do
     case Accounts.get_user_by_session_token(token) do

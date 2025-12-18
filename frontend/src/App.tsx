@@ -11,7 +11,7 @@ const API_BASE = "/api"; // proxy to Phoenix
 const App: React.FC = () => {
 	const [mode, setMode] = useState<"login" | "register">("login");
 	const [email, setEmail] = useState("demo@example.com");
-	const [password, setPassword] = useState("password");
+	const [password, setPassword] = useState("test");
 	const [token, setToken] = useState<string | null>(null);
 	const [me, setMe] = useState<User | null>(null);
 	const [loading, setLoading] = useState(false);
@@ -53,6 +53,34 @@ const App: React.FC = () => {
 			setLoading(false);
 		}
 	};
+
+	const logout = async () => {
+		resetMessages();
+		setLoading(true);
+		setMe(null);
+		try {
+			const res = await fetch(`${API_BASE}/users/logout`, {
+				method: "DELETE",
+				headers: {
+					"Content-Type": "application/json",
+					Accept: "application/json",
+				},
+			});
+
+			if (res.status === 204) {
+				// no body to parse
+			} else {
+				const data = await res.json();
+			}
+
+			setToken(null);
+			setMessage("Logged out successfully.");
+		} catch (e: any) {
+			setError(e.message ?? "Unknown error");
+		} finally {
+			setLoading(false);
+		}
+	}
 
 	const login = async () => {
 		resetMessages();
@@ -153,6 +181,16 @@ const App: React.FC = () => {
 				>
 					Register
 				</button>
+
+				<button
+					type="button"
+					onClick={() => {
+						resetMessages();
+						void logout();
+					}}
+				>
+					Logout
+				</button>
 			</div>
 
 			<form onSubmit={handleSubmit}>
@@ -180,6 +218,7 @@ const App: React.FC = () => {
 							? "Login and fetch /me"
 							: "Register"}
 				</button>
+
 			</form>
 
 			{token && (
