@@ -1,8 +1,6 @@
 defmodule RainingWeb.Router do
   use RainingWeb, :router
 
-  import RainingWeb.UserAuth
-
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -10,12 +8,11 @@ defmodule RainingWeb.Router do
     plug :put_root_layout, html: {RainingWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
-    plug :fetch_current_scope_for_user
   end
 
   pipeline :auth do
     plug :accepts, ["json"]
-    plug Raining.UserAuth, :fetch_current_scope_for_user
+    plug RainingWeb.UserAuth, :fetch_current_scope_for_user
   end
 
   pipeline :api do
@@ -28,6 +25,11 @@ defmodule RainingWeb.Router do
     post "/users/register", UserRegistrationController, :create
     post "/users/login", UserSessionController, :create
     delete "/users/logout", UserSessionController, :delete
+  end
+
+  scope "/api", RainingWeb do
+    pipe_through :auth
+
     get "/me", UserController, :show
   end
 

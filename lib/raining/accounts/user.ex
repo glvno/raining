@@ -13,6 +13,15 @@ defmodule Raining.Accounts.User do
   end
 
   @doc """
+  Changeset for registering a new user (email + password).
+  """
+  def registration_changeset(user, attrs, opts \\ []) do
+    user
+    |> email_changeset(attrs, opts)
+    |> password_changeset(attrs, opts)
+  end
+
+  @doc """
   A user changeset for registering or changing the email.
 
   It requires the email to change otherwise an error is added.
@@ -42,7 +51,6 @@ defmodule Raining.Accounts.User do
       changeset
       |> unsafe_validate_unique(:email, Raining.Repo)
       |> unique_constraint(:email)
-      |> validate_email_changed()
     else
       changeset
     end
@@ -81,7 +89,7 @@ defmodule Raining.Accounts.User do
   defp validate_password(changeset, opts) do
     changeset
     |> validate_required([:password])
-    |> validate_length(:password, min: 12, max: 72)
+    |> validate_length(:password, min: 4, max: 72)
     # Examples of additional password validation:
     # |> validate_format(:password, ~r/[a-z]/, message: "at least one lower case character")
     # |> validate_format(:password, ~r/[A-Z]/, message: "at least one upper case character")

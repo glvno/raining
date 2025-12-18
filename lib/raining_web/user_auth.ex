@@ -1,6 +1,6 @@
 defmodule RainingWeb.UserAuth do
   import Plug.Conn
-  alias MyApp.Accounts
+  alias Raining.Accounts
 
   @behaviour Plug
 
@@ -29,7 +29,7 @@ defmodule RainingWeb.UserAuth do
   defp verify_api_token(token) do
     case Accounts.get_user_by_session_token(token) do
       nil -> {:error, :invalid}
-      user -> {:ok, user}
+      {user, _timestamp} -> {:ok, user}
     end
   end
 end

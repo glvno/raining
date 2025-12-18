@@ -76,7 +76,7 @@ defmodule Raining.Accounts do
   """
   def register_user(attrs) do
     %User{}
-    |> User.email_changeset(attrs)
+    |> User.registration_changeset(attrs)
     |> Repo.insert()
   end
 
@@ -175,7 +175,7 @@ defmodule Raining.Accounts do
   def generate_user_session_token(user) do
     {token, user_token} = UserToken.build_session_token(user)
     Repo.insert!(user_token)
-    token
+    Base.url_encode64(token, padding: false)
   end
 
   @doc """
@@ -183,9 +183,11 @@ defmodule Raining.Accounts do
 
   If the token is valid `{user, token_inserted_at}` is returned, otherwise `nil` is returned.
   """
-  def get_user_by_session_token(token) do
-    {:ok, query} = UserToken.verify_session_token_query(token)
-    Repo.one(query)
+  def get_user_by_session_token(encoded_token) do
+    with {:ok, token} <- Base.url_decode64(encoded_token, padding: false),
+         {:ok, query} <- UserToken.verify_session_token_query(token) do
+      Repo.one(query)
+    end
   end
 
   @doc """
