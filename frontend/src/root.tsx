@@ -5,6 +5,7 @@ import {
 	Scripts,
 	ScrollRestoration,
 } from "react-router";
+import Nav from "./components/Nav";
 
 export function Layout({
 	children,
@@ -31,5 +32,9 @@ export function Layout({
 }
 
 export default function Root() {
-	return <Outlet />;
+	return (
+
+		<  >
+			<Nav />
+			<Outlet /></>)
 }
