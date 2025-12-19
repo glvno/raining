@@ -156,9 +156,9 @@ const App: React.FC = () => {
 	};
 
 	return (
-		<div style={{ maxWidth: 480, margin: "2rem auto", fontFamily: "sans-serif" }}>
+		<div className="flex flex-col gap-4">
 
-			<div style={{ marginBottom: "1rem" }}>
+			<div className="flex gap-3">
 				<button
 					type="button"
 					onClick={() => {
@@ -166,7 +166,6 @@ const App: React.FC = () => {
 						setMode("login");
 					}}
 					disabled={mode === "login"}
-					style={{ marginRight: 8 }}
 				>
 					Login
 				</button>
@@ -192,25 +191,23 @@ const App: React.FC = () => {
 				</button>
 			</div>
 
-			<form onSubmit={handleSubmit}>
-				<label>
+			<form className="flex flex-col gap-3" onSubmit={handleSubmit}>
+				<label className="flex flex-row gap-3">
 					Email
 					<input
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
-						style={{ display: "block", width: "100%", marginTop: 4 }}
 					/>
 				</label>
-				<label style={{ marginTop: 8, display: "block" }}>
+				<label className="flex flex-row gap-2">
 					Password
 					<input
 						type="password"
 						value={password}
 						onChange={(e) => setPassword(e.target.value)}
-						style={{ display: "block", width: "100%", marginTop: 4 }}
 					/>
 				</label>
-				<button type="submit" disabled={loading} style={{ marginTop: 12 }}>
+				<button type="submit" disabled={loading} >
 					{loading
 						? "Working..."
 						: mode === "login"
@@ -221,26 +218,26 @@ const App: React.FC = () => {
 			</form>
 
 			{token && (
-				<div style={{ marginTop: "1rem" }}>
+				<div >
 					<strong>Token:</strong> <code>{token}</code>
 				</div>
 			)}
 
 			{me && (
-				<div style={{ marginTop: "1rem" }}>
+				<div >
 					<h2>Current user</h2>
 					<pre>{JSON.stringify(me, null, 2)}</pre>
 				</div>
 			)}
 
 			{message && (
-				<div style={{ marginTop: "0.5rem", color: "green" }}>
+				<div >
 					<strong>{message}</strong>
 				</div>
 			)}
 
 			{error && (
-				<div style={{ marginTop: "0.5rem", color: "red" }}>
+				<div >
 					<strong>Error:</strong> {error}
 				</div>
 			)}
