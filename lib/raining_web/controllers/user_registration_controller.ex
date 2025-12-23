@@ -1,6 +1,20 @@
 defmodule RainingWeb.UserRegistrationController do
   use RainingWeb, :controller
   alias Raining.Accounts
+  alias RainingWeb.Schemas.{UserRegistrationParams, UserResponse}
+
+  use OpenApiSpex.ControllerSpecs
+
+  operation :create,
+    summary: "Create user",
+    parameters: [
+      email: [in: :body, description: "User email", type: :string, example: "test@example.com"],
+      password: [in: :body, description: "User password", type: :string, example: "password"]
+    ],
+    request_body: {"User params", "application/json", UserRegistrationParams},
+    responses: [
+      ok: {"User response", "application/json", UserResponse}
+    ]
 
   def create(conn, %{"user" => user_params}) do
     case Accounts.register_user(user_params) do
@@ -23,4 +37,3 @@ defmodule RainingWeb.UserRegistrationController do
     end
   end
 end
-

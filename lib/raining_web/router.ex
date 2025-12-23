@@ -17,6 +17,7 @@ defmodule RainingWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug OpenApiSpex.Plug.PutApiSpec, module: RainingWeb.ApiSpec
   end
 
   scope "/api", RainingWeb do
@@ -27,16 +28,23 @@ defmodule RainingWeb.Router do
     delete "/users/logout", UserSessionController, :delete
   end
 
+  scope "/api", OpenApiSpex do
+    pipe_through :api
+    get "/openapi", Plug.RenderSpec, []
+  end
+
   scope "/api", RainingWeb do
     pipe_through :auth
 
     get "/me", UserController, :show
   end
 
-  scope "/", RainingWeb do
+  scope "/" do
     pipe_through :browser
 
-    get "/", PageController, :home
+    get "/swagger", OpenApiSpex.Plug.SwaggerUI, path: "/api/openapi"
+
+    get "/", RainingWeb.PageController, :home
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
