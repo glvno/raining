@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "WebSearch",
+      "WebFetch(domain:open-meteo.com)",
+      "Bash(mix test:*)",
+      "mcp__tidewave__project_eval",
+      "mcp__tidewave__get_docs",
+      "Bash(mix help:*)"
     ]
   }
 }
