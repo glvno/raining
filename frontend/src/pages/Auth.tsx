@@ -1,248 +1,145 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import type { FormEvent } from 'react'
+import { useNavigate } from 'react-router'
+import { useAuth } from '../contexts/AuthContext'
 
+const Auth: React.FC = () => {
+	const navigate = useNavigate()
+	const { login, register, error, clearError, isAuthenticated } = useAuth()
 
-type User = {
-	id: number
-	email: string
-}
-interface Props {
-	token: string
-	// Type for the state updater function
-	updateToken: React.Dispatch<React.SetStateAction<string>>
-}
-
-const Auth: React.FC<Props> = (props) => {
-	const { token, updateToken } = props
 	const [mode, setMode] = useState<'login' | 'register'>('login')
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
-	const [user, setUser] = useState<User | null>(null)
-	const [loading, setLoading] = useState(false)
-	const [error, setError] = useState<string | null>(null)
-	const [message, setMessage] = useState<string | null>(null)
+	const [isSubmitting, setIsSubmitting] = useState(false)
+	const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-	const resetMessages = () => {
-		setError(null)
-		setMessage(null)
-	}
-
-	const register = async () => {
-		resetMessages()
-		setLoading(true)
-		setUser(null)
-
-		try {
-			const res = await fetch(`/api/users/register`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'application/json',
-				},
-				body: JSON.stringify({ user: { email, password } }),
-				// adapt payload to match your ApiUserRegistrationController params
-			})
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}))
-				throw new Error(body.error || `Register failed with ${res.status}`)
-			}
-
-			await res.json().catch(() => ({})) // ignore body; adjust as needed
-			setMessage('Registration successful. You can now log in.')
-			setMode('login')
-		} catch (e: any) {
-			setError(e.message ?? 'Unknown error')
-		} finally {
-			setLoading(false)
-		}
-	}
-
-	const logout = async () => {
-		resetMessages()
-		setLoading(true)
-		setUser(null)
-		try {
-			const res = await fetch(`/api/users/logout`, {
-				method: 'DELETE',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'application/json',
-				},
-			})
-
-			if (res.status === 204) {
-				// no body to parse
-			} else {
-				const data = await res.json()
-			}
-
-			updateToken(null)
-			setMessage('Logged out successfully.')
-		} catch (e: any) {
-			setError(e.message ?? 'Unknown error')
-		} finally {
-			setLoading(false)
-		}
-	}
-
-	const login = async () => {
-		resetMessages()
-		setLoading(true)
-		setUser(null)
-
-		try {
-			const res = await fetch(`/api/users/login`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'application/json',
-				},
-				body: JSON.stringify({ email, password }),
-			})
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}))
-				throw new Error(body.error || `Login failed with ${res.status}`)
-			}
-
-			const body = await res.json()
-			const t: string = body.token
-
-			updateToken(t)
-			setMessage('Logged in successfully.')
-		} catch (e: any) {
-			setError(e.message ?? 'Unknown error')
-		} finally {
-			setLoading(false)
-		}
-	}
-
-	const fetchUser = async (t: string) => {
-		setLoading(true)
-		setError(null)
-
-		try {
-			const res = await fetch(`/api/me`, {
-				headers: {
-					Authorization: `Bearer ${t}`,
-					Accept: 'application/json',
-				},
-			})
-
-			if (!res.ok) {
-				const body = await res.json().catch(() => ({}))
-				throw new Error(body.error || `Fetch /me failed with ${res.status}`)
-			}
-
-			const body: User = await res.json()
-			setUser(body)
-		} catch (e: any) {
-			setError(e.message ?? 'Unknown error')
-		} finally {
-			setLoading(false)
-		}
-	}
-
+	// Redirect to home if already authenticated
 	useEffect(() => {
-		if (token) {
-			void fetchUser(token)
+		if (isAuthenticated) {
+			navigate('/', { replace: true })
 		}
-	}, [token])
+	}, [isAuthenticated, navigate])
 
-	const handleSubmit = (e: React.FormEvent) => {
+	const handleSubmit = async (e: FormEvent) => {
 		e.preventDefault()
-		if (mode === 'login') {
-			void login()
-		} else {
-			void register()
+		setIsSubmitting(true)
+		setSuccessMessage(null)
+		clearError()
+
+		try {
+			if (mode === 'login') {
+				await login(email, password)
+				// Will redirect via useEffect
+			} else {
+				await register(email, password)
+				// Will redirect via useEffect
+			}
+		} catch (err) {
+			// Error is already set in AuthContext
+		} finally {
+			setIsSubmitting(false)
 		}
+	}
+
+	const switchMode = (newMode: 'login' | 'register') => {
+		setMode(newMode)
+		setSuccessMessage(null)
+		clearError()
 	}
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex gap-3">
-				{!token && (
-					<>
-						<button
-							type="button"
-							onClick={() => {
-								resetMessages()
-								setMode('login')
-							}}
-							disabled={mode === 'login'}
-						>
-							Login
-						</button>
-						<button
-							type="button"
-							onClick={() => {
-								resetMessages()
-								setMode('register')
-							}}
-							disabled={mode === 'register'}
-						>
-							Register
-						</button>
-					</>
-				)}
+		<div className="min-h-full bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center px-4 py-12">
+			<div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md">
+				<div className="text-center mb-8">
+					<h1 className="text-4xl font-bold text-gray-900 mb-2">🌧️ Raining</h1>
+					<p className="text-gray-600">
+						{mode === 'login' ? 'Welcome back!' : 'Create your account'}
+					</p>
+				</div>
 
-				{token && (
+				<div className="flex gap-2 mb-6">
 					<button
 						type="button"
-						onClick={() => {
-							resetMessages()
-							void logout()
-						}}
+						onClick={() => switchMode('login')}
+						className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+							mode === 'login'
+								? 'bg-blue-500 text-white'
+								: 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+						}`}
 					>
-						Logout
+						Login
 					</button>
-				)}
-			</div>
+					<button
+						type="button"
+						onClick={() => switchMode('register')}
+						className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+							mode === 'register'
+								? 'bg-blue-500 text-white'
+								: 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+						}`}
+					>
+						Register
+					</button>
+				</div>
 
-			{!token && (
-				<form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-					<label className="flex flex-row gap-3">
-						Email
-						<input value={email} onChange={(e) => setEmail(e.target.value)} />
-					</label>
-					<label className="flex flex-row gap-2">
-						Password
+				<form onSubmit={handleSubmit} className="space-y-4">
+					<div>
+						<label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+							Email
+						</label>
 						<input
+							id="email"
+							type="email"
+							value={email}
+							onChange={(e) => setEmail(e.target.value)}
+							required
+							className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+							placeholder="you@example.com"
+							disabled={isSubmitting}
+						/>
+					</div>
+
+					<div>
+						<label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+							Password
+						</label>
+						<input
+							id="password"
 							type="password"
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
+							required
+							className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+							placeholder="••••••••"
+							disabled={isSubmitting}
 						/>
-					</label>
-					<button type="submit" disabled={loading}>
-						{loading ? 'Working...' : mode === 'login' ? 'Login' : 'Register'}
+					</div>
+
+					<button
+						type="submit"
+						disabled={isSubmitting}
+						className={`w-full py-3 rounded-lg font-medium transition-colors ${
+							isSubmitting
+								? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+								: 'bg-blue-500 text-white hover:bg-blue-600'
+						}`}
+					>
+						{isSubmitting ? 'Please wait...' : mode === 'login' ? 'Login' : 'Create Account'}
 					</button>
 				</form>
-			)}
 
-			{token && (
-				<div>
-					<strong>Token:</strong> <code>{token}</code>
-				</div>
-			)}
+				{successMessage && (
+					<div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+						<p className="text-sm text-green-800">{successMessage}</p>
+					</div>
+				)}
 
-			{user && (
-				<div>
-					<h2>Current user</h2>
-					<pre>{JSON.stringify(user, null, 2)}</pre>
-				</div>
-			)}
-
-			{message && (
-				<div>
-					<strong>{message}</strong>
-				</div>
-			)}
-
-			{error && (
-				<div>
-					<strong>Error:</strong> {error}
-				</div>
-			)}
+				{error && (
+					<div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+						<p className="text-sm text-red-800">{error}</p>
+					</div>
+				)}
+			</div>
 		</div>
 	)
 }

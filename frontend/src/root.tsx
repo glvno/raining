@@ -5,7 +5,6 @@ import {
 	Scripts,
 	ScrollRestoration,
 } from "react-router";
-import Nav from "./components/Nav";
 
 export function Layout({
 	children,
@@ -18,11 +17,11 @@ export function Layout({
 				<meta charSet="UTF-8" />
 				<link rel="icon" type="image/svg+xml" href="/vite.svg" />
 				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-				<title>frontend</title>
+				<title>Raining</title>
 				<Meta />
 				<Links />
 			</head>
-			<body className="flex flex-col justify-around">
+			<body>
 				{children}
 				<ScrollRestoration />
 				<Scripts />
@@ -32,9 +31,5 @@ export function Layout({
 }
 
 export default function Root() {
-	return (
-
-		<  >
-			<Nav />
-			<Outlet /></>)
+	return <Outlet />
 }
