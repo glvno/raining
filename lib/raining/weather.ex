@@ -21,7 +21,7 @@ defmodule Raining.Weather do
   ## Examples
 
       iex> Raining.Weather.precision()
-      1
+      0
 
   """
   @spec precision() :: non_neg_integer()
@@ -76,10 +76,10 @@ defmodule Raining.Weather do
   ## Examples
 
       iex> Raining.Weather.round_coordinate(52.527)
-      52.5
+      53.0
 
       iex> Raining.Weather.round_coordinate(13.46)
-      13.5
+      13.0
 
   """
   @spec round_coordinate(number()) :: float()

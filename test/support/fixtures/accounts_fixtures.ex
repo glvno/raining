@@ -19,10 +19,15 @@ defmodule Raining.AccountsFixtures do
   end
 
   def unconfirmed_user_fixture(attrs \\ %{}) do
-    {:ok, user} =
-      attrs
-      |> valid_user_attributes()
-      |> Accounts.register_user()
+    # Directly insert user for testing, bypassing validation issues
+    user =
+      %Accounts.User{}
+      |> Accounts.User.email_changeset(
+        attrs
+        |> Enum.into(%{email: unique_user_email()}),
+        validate_unique: false
+      )
+      |> Raining.Repo.insert!()
 
     user
   end

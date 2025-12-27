@@ -22,7 +22,8 @@ config :raining, :scopes,
 
 config :raining,
   ecto_repos: [Raining.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  droplets_time_window_hours: 2
 
 # Configures the endpoint
 config :raining, RainingWeb.Endpoint,

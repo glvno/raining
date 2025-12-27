@@ -66,4 +66,151 @@ defmodule RainingWeb.Schemas do
       }
     })
   end
+
+  defmodule DropletParams do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "DropletParams",
+      description: "Request schema for creating a droplet",
+      type: :object,
+      properties: %{
+        content: %Schema{
+          type: :string,
+          description: "Text content of the droplet",
+          minLength: 1,
+          maxLength: 500
+        },
+        latitude: %Schema{
+          type: :number,
+          description: "Latitude coordinate",
+          minimum: -90,
+          maximum: 90,
+          format: :float
+        },
+        longitude: %Schema{
+          type: :number,
+          description: "Longitude coordinate",
+          minimum: -180,
+          maximum: 180,
+          format: :float
+        }
+      },
+      required: [:content, :latitude, :longitude],
+      example: %{
+        "content" => "It's raining here!",
+        "latitude" => 52.5,
+        "longitude" => 13.4
+      }
+    })
+  end
+
+  defmodule Droplet do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "Droplet",
+      description: "A droplet (social post with geolocation)",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :integer, description: "Droplet ID"},
+        content: %Schema{type: :string, description: "Text content"},
+        latitude: %Schema{type: :number, description: "Latitude coordinate", format: :float},
+        longitude: %Schema{type: :number, description: "Longitude coordinate", format: :float},
+        user: User,
+        inserted_at: %Schema{
+          type: :string,
+          description: "Creation timestamp",
+          format: :"date-time"
+        },
+        updated_at: %Schema{
+          type: :string,
+          description: "Last update timestamp",
+          format: :"date-time"
+        }
+      },
+      required: [:id, :content, :latitude, :longitude, :user, :inserted_at, :updated_at],
+      example: %{
+        "id" => 1,
+        "content" => "It's raining here!",
+        "latitude" => 52.5,
+        "longitude" => 13.4,
+        "user" => %{
+          "id" => 123,
+          "email" => "joe@gmail.com"
+        },
+        "inserted_at" => "2024-01-15T12:34:55Z",
+        "updated_at" => "2024-01-15T12:34:55Z"
+      }
+    })
+  end
+
+  defmodule DropletResponse do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "DropletResponse",
+      description: "Response schema for single droplet",
+      type: :object,
+      properties: %{
+        droplet: Droplet
+      },
+      example: %{
+        "droplet" => %{
+          "id" => 1,
+          "content" => "It's raining here!",
+          "latitude" => 52.5,
+          "longitude" => 13.4,
+          "user" => %{
+            "id" => 123,
+            "email" => "joe@gmail.com"
+          },
+          "inserted_at" => "2024-01-15T12:34:55Z",
+          "updated_at" => "2024-01-15T12:34:55Z"
+        }
+      }
+    })
+  end
+
+  defmodule DropletsResponse do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "DropletsResponse",
+      description: "Response schema for droplet feed",
+      type: :object,
+      properties: %{
+        droplets: %Schema{
+          type: :array,
+          items: Droplet,
+          description: "Array of droplets in the feed"
+        },
+        count: %Schema{type: :integer, description: "Number of droplets in the feed"},
+        time_window_hours: %Schema{
+          type: :integer,
+          description: "Time window in hours used for the feed"
+        },
+        message: %Schema{type: :string, description: "Optional message (e.g., 'Not raining')"}
+      },
+      required: [:droplets, :count],
+      example: %{
+        "droplets" => [
+          %{
+            "id" => 1,
+            "content" => "It's raining here!",
+            "latitude" => 52.5,
+            "longitude" => 13.4,
+            "user" => %{
+              "id" => 123,
+              "email" => "joe@gmail.com"
+            },
+            "inserted_at" => "2024-01-15T12:34:55Z",
+            "updated_at" => "2024-01-15T12:34:55Z"
+          }
+        ],
+        "count" => 1,
+        "time_window_hours" => 2
+      }
+    })
+  end
 end

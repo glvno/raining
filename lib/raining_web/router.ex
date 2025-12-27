@@ -37,6 +37,11 @@ defmodule RainingWeb.Router do
     pipe_through :auth
 
     get "/me", UserController, :show
+
+    # Droplet endpoints
+    post "/droplets", DropletController, :create
+    get "/droplets/feed", DropletController, :feed
+    get "/droplets/:id", DropletController, :show
   end
 
   scope "/" do

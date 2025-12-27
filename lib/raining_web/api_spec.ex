@@ -1,5 +1,5 @@
 defmodule RainingWeb.ApiSpec do
-  alias OpenApiSpex.{Components, Info, OpenApi, Paths, Server}
+  alias OpenApiSpex.{Info, OpenApi, Paths, Server}
   alias RainingWeb.{Endpoint, Router}
   @behaviour OpenApi
 
