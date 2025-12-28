@@ -4,13 +4,15 @@ import { useLocation } from '../contexts/LocationContext';
 import { DropletComposer } from '../components/DropletComposer';
 import { DropletCard } from '../components/DropletCard';
 import { RainAreaIndicator } from '../components/RainAreaIndicator';
-import type { Droplet, FeedResponse } from '../types';
+import { RainAreaMap } from '../components/RainAreaMap';
+import type { Droplet, FeedResponse, GeoJSONGeometry } from '../types';
 
 const API_BASE = '/api';
 const REFRESH_INTERVAL = 30000; // 30 seconds
 
 export default function Home() {
   const [droplets, setDroplets] = useState<Droplet[]>([]);
+  const [rainZone, setRainZone] = useState<GeoJSONGeometry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +60,7 @@ export default function Home() {
 
       const data: FeedResponse = await response.json();
       setDroplets(data.droplets);
+      setRainZone(data.rain_zone);
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load feed';
@@ -89,6 +92,14 @@ export default function Home() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">🌧️ Raining</h1>
           <RainAreaIndicator dropletCount={droplets.length} />
+        </div>
+
+        <div className="mb-6">
+          <RainAreaMap
+            rainZone={rainZone}
+            userLocation={latitude && longitude ? { latitude, longitude } : null}
+            droplets={droplets}
+          />
         </div>
 
         <DropletComposer onDropletCreated={handleDropletCreated} />

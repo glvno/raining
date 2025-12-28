@@ -16,7 +16,9 @@
       "Bash(mix ecto.rollback:*)",
       "Bash(mix ecto.migrate:*)",
       "Bash(mix compile:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

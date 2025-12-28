@@ -190,7 +190,24 @@ defmodule RainingWeb.Schemas do
           type: :integer,
           description: "Time window in hours used for the feed"
         },
-        message: %Schema{type: :string, description: "Optional message (e.g., 'Not raining')"}
+        message: %Schema{type: :string, description: "Optional message (e.g., 'Not raining')"},
+        rain_zone: %Schema{
+          type: :object,
+          nullable: true,
+          description: "GeoJSON Polygon representing the rain zone area",
+          example: %{
+            "type" => "Polygon",
+            "coordinates" => [
+              [
+                [-97.2, 39.7],
+                [-97.0, 39.7],
+                [-97.0, 39.8],
+                [-97.2, 39.8],
+                [-97.2, 39.7]
+              ]
+            ]
+          }
+        }
       },
       required: [:droplets, :count],
       example: %{
@@ -209,7 +226,19 @@ defmodule RainingWeb.Schemas do
           }
         ],
         "count" => 1,
-        "time_window_hours" => 2
+        "time_window_hours" => 2,
+        "rain_zone" => %{
+          "type" => "Polygon",
+          "coordinates" => [
+            [
+              [-97.2, 39.7],
+              [-97.0, 39.7],
+              [-97.0, 39.8],
+              [-97.2, 39.8],
+              [-97.2, 39.7]
+            ]
+          ]
+        }
       }
     })
   end

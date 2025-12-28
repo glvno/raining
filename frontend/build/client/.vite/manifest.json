@@ -4,7 +4,7 @@
     "name": "chunk-JMJ3UQ3L"
   },
   "src/catchall.tsx?__react-router-build-client-route": {
-    "file": "assets/catchall-BqWAMto-.js",
+    "file": "assets/catchall-CP7nEYW2.js",
     "name": "catchall",
     "src": "src/catchall.tsx?__react-router-build-client-route",
     "isEntry": true,
@@ -13,7 +13,7 @@
     ]
   },
   "src/entry.client.tsx": {
-    "file": "assets/entry.client-Cpo4JHr3.js",
+    "file": "assets/entry.client-CDnhWtp7.js",
     "name": "entry.client",
     "src": "src/entry.client.tsx",
     "isEntry": true,
@@ -21,7 +21,7 @@
       "_chunk-JMJ3UQ3L-DyXDjqW6.js"
     ],
     "css": [
-      "assets/entry-gyV0Wdt3.css"
+      "assets/entry-uZ3S3KHF.css"
     ]
   },
   "src/root.tsx?__react-router-build-client-route": {

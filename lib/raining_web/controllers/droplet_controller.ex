@@ -141,19 +141,23 @@ defmodule RainingWeb.DropletController do
       opts = build_feed_opts(params)
 
       case Droplets.get_local_feed(lat, lng, opts) do
-        {:ok, droplets} ->
+        {:ok, droplets, zone_geometry} ->
+          rain_zone = Droplets.zone_to_geojson(zone_geometry)
+
           json(conn, %{
             droplets: Enum.map(droplets, &format_droplet/1),
             count: length(droplets),
             time_window_hours:
-              Keyword.get(opts, :time_window_hours, Droplets.get_time_window_hours())
+              Keyword.get(opts, :time_window_hours, Droplets.get_time_window_hours()),
+            rain_zone: rain_zone
           })
 
         {:error, :no_rain} ->
           json(conn, %{
             droplets: [],
             count: 0,
-            message: "Not raining at your location"
+            message: "Not raining at your location",
+            rain_zone: nil
           })
 
         {:error, reason} ->

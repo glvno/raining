@@ -120,6 +120,67 @@ defmodule Raining.Droplets do
     end
   end
 
+  @doc """
+  Converts zone geometry to GeoJSON format for API responses.
+
+  Handles two cases:
+  1. PostGIS Geometry (from NWS zones) - converts to GeoJSON
+  2. Coordinate list (from Open-Meteo) - converts to bounding box polygon
+
+  Returns nil if geometry cannot be converted.
+
+  ## Examples
+
+      iex> zone_to_geojson(nil)
+      nil
+
+      iex> zone_to_geojson(%Geo.Polygon{})
+      %{"type" => "Polygon", "coordinates" => [...]}
+
+  """
+  def zone_to_geojson(nil), do: nil
+
+  def zone_to_geojson(%Geo.Polygon{} = polygon) do
+    # NWS zone geometry - convert PostGIS to GeoJSON
+    case Geo.JSON.encode(polygon) do
+      {:ok, geojson} -> geojson
+      {:error, _} -> nil
+    end
+  end
+
+  def zone_to_geojson(%Geo.MultiPolygon{} = multi_polygon) do
+    # Handle MultiPolygon (some NWS zones use this)
+    case Geo.JSON.encode(multi_polygon) do
+      {:ok, geojson} -> geojson
+      {:error, _} -> nil
+    end
+  end
+
+  def zone_to_geojson(rain_coords) when is_list(rain_coords) and length(rain_coords) > 0 do
+    # Open-Meteo coordinate grid - convert to bounding box polygon
+    lats = Enum.map(rain_coords, fn {lat, _lng} -> lat end)
+    lngs = Enum.map(rain_coords, fn {_lat, lng} -> lng end)
+
+    min_lat = Enum.min(lats)
+    max_lat = Enum.max(lats)
+    min_lng = Enum.min(lngs)
+    max_lng = Enum.max(lngs)
+
+    # Create GeoJSON polygon (lng, lat order per GeoJSON spec)
+    %{
+      "type" => "Polygon",
+      "coordinates" => [[
+        [min_lng, min_lat],
+        [max_lng, min_lat],
+        [max_lng, max_lat],
+        [min_lng, max_lat],
+        [min_lng, min_lat]  # Close the ring
+      ]]
+    }
+  end
+
+  def zone_to_geojson(_), do: nil
+
   defp check_nws_and_get_feed(latitude, longitude, time_window_hours) do
     # Try NWS first for US locations
     case Weather.NWS.get_point_data(latitude, longitude) do
@@ -231,7 +292,7 @@ defmodule Raining.Droplets do
       order_by: [desc: d.inserted_at]
 
     droplets = Repo.all(query) |> Repo.preload(:user)
-    {:ok, droplets}
+    {:ok, droplets, zone_geom}
   end
 
   defp get_feed_with_weather_check(latitude, longitude, time_window_hours) do
@@ -268,7 +329,7 @@ defmodule Raining.Droplets do
       |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
 
     droplets_with_users = Repo.preload(droplets_in_rain_area, :user)
-    {:ok, droplets_with_users}
+    {:ok, droplets_with_users, rain_coords}
   end
 
   @doc """

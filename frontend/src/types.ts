@@ -15,11 +15,17 @@ export interface Droplet {
   updated_at: string;
 }
 
+export interface GeoJSONGeometry {
+  type: string;
+  coordinates: number[][][];
+}
+
 export interface FeedResponse {
   droplets: Droplet[];
   count: number;
   time_window_hours?: number;
   message?: string;
+  rain_zone: GeoJSONGeometry | null;
 }
 
 export interface LoginResponse {
