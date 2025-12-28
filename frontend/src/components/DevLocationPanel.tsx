@@ -1,12 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from '../contexts/LocationContext';
 
 export function DevLocationPanel() {
   const { latitude, longitude, setManualLocation } = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [lat, setLat] = useState(latitude?.toString() ?? '');
-  const [lng, setLng] = useState(longitude?.toString() ?? '');
+  const [lat, setLat] = useState('');
+  const [lng, setLng] = useState('');
   const [isFindingRain, setIsFindingRain] = useState(false);
+
+  // Check if demo mode is enabled
+  const isDemoMode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('demo') === 'true';
+  }, []);
+
+  const toggleDemoMode = () => {
+    const url = new URL(window.location.href);
+    if (isDemoMode) {
+      url.searchParams.delete('demo');
+    } else {
+      url.searchParams.set('demo', 'true');
+    }
+    window.location.href = url.toString();
+  };
 
   // Update form when current location changes
   useEffect(() => {
@@ -138,6 +154,32 @@ export function DevLocationPanel() {
         </button>
       </div>
 
+      <button
+        onClick={toggleDemoMode}
+        className={`w-full mb-3 px-4 py-3 rounded-lg border-2 font-medium transition-all ${
+          isDemoMode
+            ? 'bg-blue-50 border-blue-400 text-blue-900 hover:bg-blue-100'
+            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <span className="text-lg">{isDemoMode ? '🎭' : '🌍'}</span>
+            <span className="text-sm font-semibold">
+              {isDemoMode ? 'Demo Mode: ON' : 'Demo Mode: OFF'}
+            </span>
+          </span>
+          <span className="text-xs bg-white px-2 py-1 rounded border border-gray-200">
+            {isDemoMode ? 'Click to disable' : 'Click to enable'}
+          </span>
+        </div>
+        {isDemoMode && (
+          <div className="mt-2 text-xs text-blue-700">
+            Jasper County, IN • Active severe weather • Real radar
+          </div>
+        )}
+      </button>
+
       <div className="mb-3 text-sm bg-purple-50 p-2 rounded">
         <p className="font-medium text-purple-900">Current Location:</p>
         <p className="text-purple-700 font-mono text-xs">
@@ -164,7 +206,8 @@ export function DevLocationPanel() {
             value={lat}
             onChange={(e) => setLat(e.target.value)}
             placeholder="e.g., 52.5"
-            className="w-full px-3 py-2 border-2 border-gray-300 rounded text-sm focus:border-purple-500 focus:outline-none bg-white text-gray-900"
+            disabled={isDemoMode}
+            className="w-full px-3 py-2 border-2 border-gray-300 rounded text-sm focus:border-purple-500 focus:outline-none bg-white text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
             autoComplete="off"
           />
         </div>
@@ -180,14 +223,16 @@ export function DevLocationPanel() {
             value={lng}
             onChange={(e) => setLng(e.target.value)}
             placeholder="e.g., 13.4"
-            className="w-full px-3 py-2 border-2 border-gray-300 rounded text-sm focus:border-purple-500 focus:outline-none bg-white text-gray-900"
+            disabled={isDemoMode}
+            className="w-full px-3 py-2 border-2 border-gray-300 rounded text-sm focus:border-purple-500 focus:outline-none bg-white text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
             autoComplete="off"
           />
         </div>
 
         <button
           type="submit"
-          className="w-full bg-purple-600 text-white py-2 rounded font-medium hover:bg-purple-700 transition-colors text-sm"
+          disabled={isDemoMode}
+          className="w-full bg-purple-600 text-white py-2 rounded font-medium hover:bg-purple-700 transition-colors text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           Set Location
         </button>
@@ -196,7 +241,7 @@ export function DevLocationPanel() {
       <button
         type="button"
         onClick={findRainyLocation}
-        disabled={isFindingRain}
+        disabled={isFindingRain || isDemoMode}
         className="w-full mt-2 bg-green-600 text-white py-2 rounded font-medium hover:bg-green-700 transition-colors text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
       >
         {isFindingRain ? '🔍 Finding rain...' : '🌧️ Find Rainy Location'}
@@ -211,7 +256,8 @@ export function DevLocationPanel() {
               setManualLocation(52.5, 13.4);
               setIsOpen(false);
             }}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+            disabled={isDemoMode}
+            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Berlin
           </button>
@@ -221,7 +267,8 @@ export function DevLocationPanel() {
               setManualLocation(51.5, -0.1);
               setIsOpen(false);
             }}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+            disabled={isDemoMode}
+            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             London
           </button>
@@ -231,7 +278,8 @@ export function DevLocationPanel() {
               setManualLocation(47.6, -122.3);
               setIsOpen(false);
             }}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+            disabled={isDemoMode}
+            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Seattle
           </button>
@@ -241,7 +289,8 @@ export function DevLocationPanel() {
               setManualLocation(40.7, -74.0);
               setIsOpen(false);
             }}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+            disabled={isDemoMode}
+            className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           >
             NYC
           </button>

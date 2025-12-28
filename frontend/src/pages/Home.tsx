@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { DropletComposer } from '../components/DropletComposer';
 import { DropletCard } from '../components/DropletCard';
 import { RainAreaIndicator } from '../components/RainAreaIndicator';
 import { RainAreaMap } from '../components/RainAreaMap';
+import { DEMO_FEED_DATA } from '../data/demoData';
 import type { Droplet, FeedResponse, GeoJSONGeometry } from '../types';
 
 const API_BASE = '/api';
@@ -19,16 +20,22 @@ export default function Home() {
   const { token } = useAuth();
   const { latitude, longitude } = useLocation();
 
+  // Check if demo mode is enabled via URL parameter
+  const isDemoMode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('demo') === 'true';
+  }, []);
+
   // Load feed on mount and when location changes
   useEffect(() => {
     if (latitude && longitude && token) {
       loadFeed();
     }
-  }, [latitude, longitude, token]);
+  }, [latitude, longitude, token, isDemoMode]);
 
-  // Auto-refresh feed every 30 seconds
+  // Auto-refresh feed every 30 seconds (skip in demo mode)
   useEffect(() => {
-    if (!latitude || !longitude || !token) {
+    if (!latitude || !longitude || !token || isDemoMode) {
       return;
     }
 
@@ -37,10 +44,19 @@ export default function Home() {
     }, REFRESH_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [latitude, longitude, token]);
+  }, [latitude, longitude, token, isDemoMode]);
 
   const loadFeed = async () => {
     if (!latitude || !longitude || !token) {
+      return;
+    }
+
+    // Use demo data if in demo mode
+    if (isDemoMode) {
+      setDroplets(DEMO_FEED_DATA.droplets);
+      setRainZone(DEMO_FEED_DATA.rain_zone);
+      setError(null);
+      setIsLoading(false);
       return;
     }
 
@@ -93,6 +109,17 @@ export default function Home() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">🌧️ Raining</h1>
           <RainAreaIndicator dropletCount={droplets.length} />
         </div>
+
+        {isDemoMode && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <span className="text-blue-800 font-semibold">🎭 Demo Mode</span>
+              <span className="text-sm text-blue-600">
+                Showing ACTIVE severe weather from Jasper County, IN with real radar
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="mb-6">
           <RainAreaMap

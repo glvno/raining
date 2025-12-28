@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import L from 'leaflet';
+import { DEMO_RADAR_TIMESTAMP } from '../data/demoData';
 import type { GeoJSONGeometry, Droplet } from '../types';
 
 interface RainAreaMapProps {
@@ -23,8 +24,20 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
   });
   const [radarTimestamp, setRadarTimestamp] = useState<number | null>(null);
 
-  // Fetch latest radar timestamp from RainViewer API
+  // Check if demo mode is enabled
+  const isDemoMode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('demo') === 'true';
+  }, []);
+
+  // Set radar timestamp (demo mode uses fixed snapshot, otherwise fetch live)
   useEffect(() => {
+    if (isDemoMode) {
+      // Use fixed radar timestamp from demo data
+      setRadarTimestamp(DEMO_RADAR_TIMESTAMP);
+      return;
+    }
+
     const fetchRadarTimestamp = async () => {
       try {
         const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
@@ -43,7 +56,7 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
     // Refresh radar every 5 minutes
     const interval = setInterval(fetchRadarTimestamp, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isDemoMode]);
 
   // Initialize map on mount
   useEffect(() => {
@@ -56,8 +69,10 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
       attributionControl: false, // Disable default attribution
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Use CartoDB Positron for a cleaner, minimal base map with muted roads
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
+      subdomains: 'abcd',
     }).addTo(map);
 
     // Create custom collapsible attribution control
@@ -74,7 +89,7 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
         icon.style.cssText = 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #666;';
 
         const content = L.DomUtil.create('div', 'attribution-content', container);
-        content.innerHTML = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> | <a href="https://rainviewer.com" target="_blank">RainViewer</a> | <a href="https://leafletjs.com" target="_blank">Leaflet</a>';
+        content.innerHTML = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> | <a href="https://carto.com/attributions" target="_blank">CARTO</a> | <a href="https://rainviewer.com" target="_blank">RainViewer</a> | <a href="https://leafletjs.com" target="_blank">Leaflet</a>';
         content.style.cssText = 'display: none; padding: 4px 8px; font-size: 11px; white-space: nowrap; border-top: 1px solid #eee; margin-top: 4px;';
 
         let isExpanded = false;
