@@ -9,7 +9,14 @@
       "mcp__tidewave__get_docs",
       "Bash(mix help:*)",
       "Bash(mix ecto.gen.migration:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "WebFetch(domain:www.weather.gov)",
+      "WebFetch(domain:api.weather.gov)",
+      "Bash(mix deps.get:*)",
+      "Bash(mix ecto.rollback:*)",
+      "Bash(mix ecto.migrate:*)",
+      "Bash(mix compile:*)",
+      "Bash(psql:*)"
     ]
   }
 }

@@ -104,26 +104,134 @@ defmodule Raining.Droplets do
   def get_local_feed(latitude, longitude, opts \\ []) do
     time_window_hours = Keyword.get(opts, :time_window_hours, get_time_window_hours())
 
-    # Check cache first
-    case check_rain_status_cache(latitude, longitude) do
-      {:ok, false, _rain_coords} ->
-        # Cache says no rain
+    # Check if user's location is in any cached raining zone (NWS zones or old coordinate-based)
+    case check_zone_cache(latitude, longitude) do
+      {:ok, zone_geometry} ->
+        # Cache hit! Use cached zone polygon to filter droplets
         require Logger
-        Logger.info("✅ Cache HIT: No rain at #{latitude}, #{longitude}")
-        {:error, :no_rain}
-
-      {:ok, true, rain_coords} ->
-        # Cache says it's raining, use cached rain coords
-        require Logger
-        Logger.info("✅ Cache HIT: Rain at #{latitude}, #{longitude} (#{length(rain_coords)} coords) - NO API CALL")
-        get_droplets_in_rain_area(rain_coords, time_window_hours)
+        Logger.info("✅ Zone Cache HIT: Using cached zone geometry - NO API CALL")
+        get_droplets_in_zone(zone_geometry, time_window_hours)
 
       {:error, :cache_miss} ->
-        # No cache entry, check weather API
+        # Cache miss - try NWS first (US only), fallback to Open-Meteo
         require Logger
-        Logger.info("❌ Cache MISS: Calling Open-Meteo API for #{latitude}, #{longitude}")
+        Logger.info("❌ Zone Cache MISS: Querying weather APIs")
+        check_nws_and_get_feed(latitude, longitude, time_window_hours)
+    end
+  end
+
+  defp check_nws_and_get_feed(latitude, longitude, time_window_hours) do
+    # Try NWS first for US locations
+    case Weather.NWS.get_point_data(latitude, longitude) do
+      {:ok, point_data} ->
+        # US location - use NWS workflow
+        check_nws_stations_and_cache(point_data, time_window_hours)
+
+      {:error, :outside_us} ->
+        # Non-US location - fallback to Open-Meteo
+        require Logger
+        Logger.info("Location outside US, falling back to Open-Meteo")
+        get_feed_with_weather_check(latitude, longitude, time_window_hours)
+
+      {:error, reason} ->
+        # NWS API error - fallback to Open-Meteo
+        require Logger
+        Logger.warning("NWS API error: #{inspect(reason)}, falling back to Open-Meteo")
         get_feed_with_weather_check(latitude, longitude, time_window_hours)
     end
+  end
+
+  defp check_nws_stations_and_cache(point_data, time_window_hours) do
+    with {:ok, stations} <- Weather.NWS.get_stations(point_data.stations_url),
+         true <- Weather.NWS.check_stations_for_rain(stations),
+         {:ok, zone_data} <- Weather.NWS.get_zone_geometry(point_data.zone_url) do
+
+      # It's raining! Cache the zone and return droplets
+      cache_raining_zone(zone_data)
+
+      # Convert GeoJSON to PostGIS geometry with SRID 4326
+      {:ok, geometry} = Geo.JSON.decode(zone_data.geometry)
+      geometry_with_srid = %{geometry | srid: 4326}
+      get_droplets_in_zone(geometry_with_srid, time_window_hours)
+    else
+      false ->
+        # No rain detected at stations
+        {:error, :no_rain}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp cache_raining_zone(zone_data) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    expires_at = DateTime.add(now, 1, :hour)
+
+    {:ok, geometry} = Geo.JSON.decode(zone_data.geometry)
+
+    # Ensure geometry has SRID 4326 (WGS84)
+    geometry_with_srid = %{geometry | srid: 4326}
+
+    attrs = %{
+      zone_id: zone_data.zone_id,
+      zone_name: zone_data.zone_name,
+      geometry: geometry_with_srid,
+      is_raining: true,
+      last_checked: now,
+      expires_at: expires_at
+    }
+
+    %RainStatusCache{}
+    |> RainStatusCache.changeset(attrs)
+    |> Repo.insert(on_conflict: :replace_all, conflict_target: :zone_id)
+
+    require Logger
+    Logger.info("Cached raining zone: #{zone_data.zone_id} (#{zone_data.zone_name})")
+  end
+
+  defp check_zone_cache(latitude, longitude) do
+    # Create point for user's location
+    point = %Geo.Point{coordinates: {longitude, latitude}, srid: 4326}
+
+    # Find any non-expired cache entry where the point is inside the geometry
+    # Use ST_SetSRID to ensure geometry has correct SRID for comparison
+    query = from c in RainStatusCache,
+      where: c.is_raining == true and c.expires_at > ^DateTime.utc_now(),
+      where: fragment("ST_Contains(ST_SetSRID(?, 4326), ?)", c.geometry, ^point),
+      limit: 1
+
+    case Repo.one(query) do
+      nil -> {:error, :cache_miss}
+      cache_entry ->
+        # Ensure returned geometry has SRID set
+        geometry = if cache_entry.geometry.srid == nil or cache_entry.geometry.srid == 0 do
+          %{cache_entry.geometry | srid: 4326}
+        else
+          cache_entry.geometry
+        end
+        {:ok, geometry}
+    end
+  end
+
+  defp get_droplets_in_zone(zone_geometry, time_window_hours) do
+    cutoff_time = DateTime.utc_now() |> DateTime.add(-time_window_hours, :hour)
+
+    # Ensure zone_geometry has SRID 4326
+    zone_geom = if zone_geometry.srid == nil or zone_geometry.srid == 0 do
+      %{zone_geometry | srid: 4326}
+    else
+      zone_geometry
+    end
+
+    # Get all droplets in time window that fall within the zone geometry
+    # Use ST_MakePoint with SRID 4326 to ensure consistent coordinate system
+    query = from d in Droplet,
+      where: d.inserted_at >= ^cutoff_time,
+      where: fragment("ST_Contains(?, ST_SetSRID(ST_MakePoint(?, ?), 4326))", ^zone_geom, d.longitude, d.latitude),
+      order_by: [desc: d.inserted_at]
+
+    droplets = Repo.all(query) |> Repo.preload(:user)
+    {:ok, droplets}
   end
 
   defp get_feed_with_weather_check(latitude, longitude, time_window_hours) do

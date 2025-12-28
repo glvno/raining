@@ -4,10 +4,19 @@ defmodule Raining.Droplets.RainStatusCache do
   import Ecto.Query
 
   schema "rain_status_cache" do
+    # NWS zone-based fields
+    field :zone_id, :string
+    field :zone_name, :string
+    field :geometry, Geo.PostGIS.Geometry
+    field :last_checked, :utc_datetime
+
+    # Legacy coordinate-based fields (kept for backward compatibility)
     field :latitude, :float
     field :longitude, :float
-    field :is_raining, :boolean
     field :rain_coords, :map
+
+    # Common fields
+    field :is_raining, :boolean
     field :expires_at, :utc_datetime
 
     timestamps(type: :utc_datetime)
@@ -15,13 +24,14 @@ defmodule Raining.Droplets.RainStatusCache do
 
   @doc """
   Changeset for creating/updating rain status cache entries.
+
+  Supports both zone-based (NWS) and coordinate-based (Open-Meteo) entries.
   """
   def changeset(cache, attrs) do
     cache
-    |> cast(attrs, [:latitude, :longitude, :is_raining, :rain_coords, :expires_at])
-    |> validate_required([:latitude, :longitude, :is_raining, :expires_at])
-    |> validate_number(:latitude, greater_than_or_equal_to: -90, less_than_or_equal_to: 90)
-    |> validate_number(:longitude, greater_than_or_equal_to: -180, less_than_or_equal_to: 180)
+    |> cast(attrs, [:zone_id, :zone_name, :geometry, :last_checked, :latitude, :longitude, :is_raining, :rain_coords, :expires_at])
+    |> validate_required([:is_raining, :expires_at])
+    |> unique_constraint(:zone_id)
   end
 
   @doc """
