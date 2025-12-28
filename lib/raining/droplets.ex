@@ -109,19 +109,19 @@ defmodule Raining.Droplets do
       {:ok, false, _rain_coords} ->
         # Cache says no rain
         require Logger
-        Logger.info("Cache HIT: No rain at #{latitude}, #{longitude}")
+        Logger.info("✅ Cache HIT: No rain at #{latitude}, #{longitude}")
         {:error, :no_rain}
 
       {:ok, true, rain_coords} ->
         # Cache says it's raining, use cached rain coords
         require Logger
-        Logger.info("Cache HIT: Rain detected at #{latitude}, #{longitude} (#{length(rain_coords)} coords)")
+        Logger.info("✅ Cache HIT: Rain at #{latitude}, #{longitude} (#{length(rain_coords)} coords) - NO API CALL")
         get_droplets_in_rain_area(rain_coords, time_window_hours)
 
       {:error, :cache_miss} ->
         # No cache entry, check weather API
         require Logger
-        Logger.info("Cache MISS: Calling weather API for #{latitude}, #{longitude}")
+        Logger.info("❌ Cache MISS: Calling Open-Meteo API for #{latitude}, #{longitude}")
         get_feed_with_weather_check(latitude, longitude, time_window_hours)
     end
   end
@@ -129,8 +129,9 @@ defmodule Raining.Droplets do
   defp get_feed_with_weather_check(latitude, longitude, time_window_hours) do
     case Weather.find_rain_area(latitude, longitude) do
       {:ok, rain_coords} when is_list(rain_coords) ->
-        # Cache the positive result with rain coords
-        cache_rain_status(latitude, longitude, true, rain_coords)
+        # Cache entry for EVERY coordinate in the rain area
+        # This way any user in this rain area gets a cache hit
+        cache_rain_area(rain_coords)
 
         get_droplets_in_rain_area(rain_coords, time_window_hours)
 
@@ -213,24 +214,72 @@ defmodule Raining.Droplets do
   {:error, :cache_miss} if no valid cache entry exists.
   """
   def check_rain_status_cache(latitude, longitude) do
-    case RainStatusCache.get_valid_cache_query(latitude, longitude) |> Repo.one() do
+    require Logger
+
+    # Round coordinates to match weather grid precision
+    # This ensures we check the cache for the same coordinate that would be in the rain area
+    rounded_lat = Weather.round_coordinate(latitude)
+    rounded_lng = Weather.round_coordinate(longitude)
+
+    Logger.debug("Cache lookup: original (#{latitude}, #{longitude}) -> rounded (#{rounded_lat}, #{rounded_lng})")
+
+    case RainStatusCache.get_valid_cache_query(rounded_lat, rounded_lng) |> Repo.one() do
       nil ->
+        Logger.debug("Cache query for rounded (#{rounded_lat}, #{rounded_lng}) returned no results")
         {:error, :cache_miss}
 
       cache_entry ->
         # Convert stored map back to list of tuples
         rain_coords = decode_rain_coords(cache_entry.rain_coords)
+        Logger.debug("Cache HIT: Found entry at (#{cache_entry.latitude}, #{cache_entry.longitude})")
         {:ok, cache_entry.is_raining, rain_coords}
     end
   end
 
   @doc """
-  Caches the rain status for the given coordinates.
+  Caches rain status for an entire rain area.
+
+  Creates a cache entry for EVERY coordinate in the rain area,
+  so that any user querying a coordinate in this area gets a cache hit.
+
+  This dramatically reduces API calls when multiple users are in the same rain area.
+  """
+  def cache_rain_area(rain_coords) when is_list(rain_coords) do
+    # Truncate to seconds (schema uses :utc_datetime, not :utc_datetime_usec)
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    expires_at = now |> DateTime.add(1, :hour)
+    rain_coords_map = encode_rain_coords(rain_coords)
+
+    # Create a cache entry for each coordinate in the rain area
+    # Use insert_all for better performance
+    entries =
+      Enum.map(rain_coords, fn {lat, lng} ->
+        %{
+          latitude: lat,
+          longitude: lng,
+          is_raining: true,
+          rain_coords: rain_coords_map,
+          expires_at: expires_at,
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    # Insert all entries at once, ignore conflicts (some may already exist)
+    Repo.insert_all(RainStatusCache, entries, on_conflict: :nothing)
+
+    require Logger
+    Logger.info("Cached rain area with #{length(rain_coords)} coordinates")
+  end
+
+  @doc """
+  Caches the rain status for a single coordinate.
 
   Cache expires after 1 hour.
   """
   def cache_rain_status(latitude, longitude, is_raining, rain_coords \\ []) do
-    expires_at = DateTime.utc_now() |> DateTime.add(1, :hour)
+    # Truncate to seconds (schema uses :utc_datetime, not :utc_datetime_usec)
+    expires_at = DateTime.utc_now() |> DateTime.truncate(:second) |> DateTime.add(1, :hour)
 
     # Encode rain coords as map for JSON storage
     rain_coords_map = encode_rain_coords(rain_coords)
