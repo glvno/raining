@@ -77,7 +77,7 @@ export function DropletComposer({ onDropletCreated }: DropletComposerProps) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="What's happening in the rain?"
-          className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full text-gray-900 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           rows={3}
           disabled={isSubmitting}
         />
@@ -85,13 +85,12 @@ export function DropletComposer({ onDropletCreated }: DropletComposerProps) {
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span
-              className={`text-sm font-medium ${
-                charCount > MAX_CHARS
-                  ? 'text-red-600'
-                  : charCount > MAX_CHARS * 0.9
+              className={`text-sm font-medium ${charCount > MAX_CHARS
+                ? 'text-red-600'
+                : charCount > MAX_CHARS * 0.9
                   ? 'text-orange-600'
                   : 'text-gray-500'
-              }`}
+                }`}
             >
               {charCount} / {MAX_CHARS}
             </span>
@@ -100,11 +99,10 @@ export function DropletComposer({ onDropletCreated }: DropletComposerProps) {
           <button
             type="submit"
             disabled={isDisabled}
-            className={`px-6 py-2 rounded-full font-medium transition-colors ${
-              isDisabled
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-500 text-white hover:bg-blue-600'
-            }`}
+            className={`px-6 py-2 rounded-full font-medium transition-colors ${isDisabled
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
           >
             {isSubmitting ? 'Posting...' : 'Post'}
           </button>
