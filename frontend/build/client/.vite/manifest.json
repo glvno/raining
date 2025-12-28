@@ -1,45 +1,36 @@
 {
-  "_AuthContext-DYnFcO9l.js": {
-    "file": "assets/AuthContext-DYnFcO9l.js",
-    "name": "AuthContext",
-    "imports": [
-      "_chunk-JMJ3UQ3L-D46zko18.js"
-    ]
-  },
-  "_chunk-JMJ3UQ3L-D46zko18.js": {
-    "file": "assets/chunk-JMJ3UQ3L-D46zko18.js",
+  "_chunk-JMJ3UQ3L-DyXDjqW6.js": {
+    "file": "assets/chunk-JMJ3UQ3L-DyXDjqW6.js",
     "name": "chunk-JMJ3UQ3L"
   },
   "src/catchall.tsx?__react-router-build-client-route": {
-    "file": "assets/catchall-B9GSLmVZ.js",
+    "file": "assets/catchall-DlQbHuk_.js",
     "name": "catchall",
     "src": "src/catchall.tsx?__react-router-build-client-route",
     "isEntry": true,
     "imports": [
-      "_chunk-JMJ3UQ3L-D46zko18.js",
-      "_AuthContext-DYnFcO9l.js"
+      "_chunk-JMJ3UQ3L-DyXDjqW6.js"
     ]
   },
   "src/entry.client.tsx": {
-    "file": "assets/entry.client-CDfra2wk.js",
+    "file": "assets/entry.client-B0qu_6Zv.js",
     "name": "entry.client",
     "src": "src/entry.client.tsx",
     "isEntry": true,
     "imports": [
-      "_chunk-JMJ3UQ3L-D46zko18.js"
+      "_chunk-JMJ3UQ3L-DyXDjqW6.js"
     ],
     "css": [
-      "assets/entry-Dya2Qi7L.css"
+      "assets/entry-2bGqFiml.css"
     ]
   },
   "src/root.tsx?__react-router-build-client-route": {
-    "file": "assets/root-Cwb1U877.js",
+    "file": "assets/root-Bj6rRzXB.js",
     "name": "root",
     "src": "src/root.tsx?__react-router-build-client-route",
     "isEntry": true,
     "imports": [
-      "_chunk-JMJ3UQ3L-D46zko18.js",
-      "_AuthContext-DYnFcO9l.js"
+      "_chunk-JMJ3UQ3L-DyXDjqW6.js"
     ]
   }
 }
