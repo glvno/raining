@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import type { GeoJSONGeometry, Droplet } from '../types';
 
@@ -11,6 +11,7 @@ interface RainAreaMapProps {
 export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const radarLayerRef = useRef<L.TileLayer | null>(null);
   const layersRef = useRef<{
     zoneLayer: L.GeoJSON | null;
     userMarker: L.Marker | null;
@@ -20,6 +21,29 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
     userMarker: null,
     dropletMarkers: [],
   });
+  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(null);
+
+  // Fetch latest radar timestamp from RainViewer API
+  useEffect(() => {
+    const fetchRadarTimestamp = async () => {
+      try {
+        const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        const data = await response.json();
+        if (data.radar && data.radar.past && data.radar.past.length > 0) {
+          // Get the most recent radar frame
+          const latest = data.radar.past[data.radar.past.length - 1];
+          setRadarTimestamp(latest.time);
+        }
+      } catch (error) {
+        console.error('Failed to fetch radar timestamp:', error);
+      }
+    };
+
+    fetchRadarTimestamp();
+    // Refresh radar every 5 minutes
+    const interval = setInterval(fetchRadarTimestamp, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Initialize map on mount
   useEffect(() => {
@@ -29,12 +53,53 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
       center: [0, 0],
       zoom: 2,
       scrollWheelZoom: false,
+      attributionControl: false, // Disable default attribution
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     }).addTo(map);
+
+    // Create custom collapsible attribution control
+    const AttributionControl = L.Control.extend({
+      options: {
+        position: 'bottomright',
+      },
+      onAdd: function () {
+        const container = L.DomUtil.create('div', 'leaflet-control-attribution-custom');
+        container.style.cssText = 'background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer; user-select: none;';
+
+        const icon = L.DomUtil.create('div', 'attribution-icon', container);
+        icon.innerHTML = 'ⓘ';
+        icon.style.cssText = 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #666;';
+
+        const content = L.DomUtil.create('div', 'attribution-content', container);
+        content.innerHTML = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> | <a href="https://rainviewer.com" target="_blank">RainViewer</a> | <a href="https://leafletjs.com" target="_blank">Leaflet</a>';
+        content.style.cssText = 'display: none; padding: 4px 8px; font-size: 11px; white-space: nowrap; border-top: 1px solid #eee; margin-top: 4px;';
+
+        let isExpanded = false;
+
+        L.DomEvent.on(icon, 'click', function (e) {
+          L.DomEvent.stopPropagation(e);
+          isExpanded = !isExpanded;
+          if (isExpanded) {
+            content.style.display = 'block';
+            icon.style.backgroundColor = '#f0f0f0';
+          } else {
+            content.style.display = 'none';
+            icon.style.backgroundColor = 'transparent';
+          }
+        });
+
+        // Prevent map interactions on the control
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.disableScrollPropagation(container);
+
+        return container;
+      },
+    });
+
+    map.addControl(new AttributionControl());
 
     mapRef.current = map;
 
@@ -45,6 +110,36 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
       }
     };
   }, []);
+
+  // Add/update radar layer when timestamp changes
+  useEffect(() => {
+    if (!mapRef.current || !radarTimestamp) return;
+
+    const map = mapRef.current;
+
+    // Remove old radar layer if it exists
+    if (radarLayerRef.current) {
+      map.removeLayer(radarLayerRef.current);
+    }
+
+    // Add new radar layer with latest timestamp
+    const radarLayer = L.tileLayer(
+      `https://tilecache.rainviewer.com/v2/radar/${radarTimestamp}/256/{z}/{x}/{y}/6/1_1.png`,
+      {
+        opacity: 0.6,
+        zIndex: 500, // Above base layer but below markers
+      }
+    ).addTo(map);
+
+    radarLayerRef.current = radarLayer;
+
+    return () => {
+      if (radarLayerRef.current) {
+        map.removeLayer(radarLayerRef.current);
+        radarLayerRef.current = null;
+      }
+    };
+  }, [radarTimestamp]);
 
   // Update layers when data changes
   useEffect(() => {
