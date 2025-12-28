@@ -54,8 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
+        const userData = await response.json();
+        // API returns user directly, not wrapped in { user: ... }
+        setUser(userData);
         setToken(authToken);
         localStorage.setItem(TOKEN_KEY, authToken);
       } else {
@@ -115,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ user: { email, password } }),
       });
 
       if (!response.ok) {

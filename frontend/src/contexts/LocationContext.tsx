@@ -109,28 +109,37 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const response = await fetch(
-        `${API_BASE}/droplets/feed?latitude=${latitude}&longitude=${longitude}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
+      const url = `${API_BASE}/droplets/feed?latitude=${latitude}&longitude=${longitude}`;
+      console.log('[LocationContext] Checking rain status at:', { latitude, longitude, url });
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      console.log('[LocationContext] Response status:', response.status);
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[LocationContext] Error response:', errorText);
         throw new Error('Failed to check rain status');
       }
 
       const data: FeedResponse = await response.json();
+      console.log('[LocationContext] Feed response:', data);
 
-      // Rain detected if feed has droplets OR count > 0
-      const raining = data.droplets.length > 0 || data.count > 0;
+      // Rain detected if there's NO message saying "Not raining"
+      // Message field only exists when it's not raining
+      const raining = !data.message;
+      console.log('[LocationContext] Rain detected:', raining, 'Message:', data.message, 'Count:', data.count, 'Droplets:', data.droplets.length);
+
       setIsRaining(raining);
       setRainAreaSize(data.count || 0);
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to check rain status';
+      console.error('[LocationContext] Error checking rain status:', err);
       setError(message);
       // Don't update rain status on error - keep previous state
     }

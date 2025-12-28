@@ -19,9 +19,18 @@ defmodule RainingWeb.UserRegistrationController do
   def create(conn, %{"user" => user_params}) do
     case Accounts.register_user(user_params) do
       {:ok, user} ->
+        # Generate session token so user is automatically logged in
+        token = Accounts.generate_user_session_token(user)
+
         conn
         |> put_status(:created)
-        |> json(%{id: user.id, email: user.email})
+        |> json(%{
+          token: token,
+          user: %{
+            id: user.id,
+            email: user.email
+          }
+        })
 
       {:error, changeset} ->
         errors =
