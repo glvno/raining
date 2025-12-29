@@ -272,7 +272,7 @@ defmodule Raining.DropletsTest do
       result = Droplets.get_local_feed(52.5, 13.4, time_window_hours: 2)
 
       case result do
-        {:ok, droplets} when is_list(droplets) ->
+        {:ok, droplets, _zone_geometry} when is_list(droplets) ->
           # If we got droplets, verify time filtering
           droplet_ids = Enum.map(droplets, & &1.id)
 
@@ -282,12 +282,8 @@ defmodule Raining.DropletsTest do
             refute old_droplet.id in droplet_ids
           end
 
-        {:ok, []} ->
-          # OK if not raining
-          assert true
-
         {:error, _} ->
-          # OK if API error
+          # OK if API error or not raining
           assert true
       end
     end
@@ -310,7 +306,7 @@ defmodule Raining.DropletsTest do
       result = Droplets.get_local_feed(52.5, 13.4)
 
       case result do
-        {:ok, droplets} when is_list(droplets) ->
+        {:ok, droplets, _zone_geometry} when is_list(droplets) ->
           # Verify structure
           assert Enum.all?(droplets, fn d ->
                    %Droplet{} = d
@@ -324,12 +320,8 @@ defmodule Raining.DropletsTest do
 
           assert timestamps == Enum.sort(timestamps, {:desc, DateTime})
 
-        {:ok, []} ->
-          # OK if not raining
-          assert true
-
         {:error, _reason} ->
-          # OK if API error
+          # OK if API error or not raining
           assert true
       end
     end

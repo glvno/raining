@@ -236,32 +236,74 @@ defmodule Raining.Droplets do
     # Calculate search bounding box (2 degree radius ~ 220km)
     bounds = calculate_search_bounds(latitude, longitude, radius: 2.0)
 
-    # Fetch precipitation grid from Open-Meteo
-    case Weather.get_precipitation_grid(
-           elem(bounds, 0),
-           elem(bounds, 1),
-           elem(bounds, 2),
-           elem(bounds, 3)
-         ) do
-      {:ok, precip_data} ->
-        # Generate contour polygon from precipitation data
-        case Weather.ContourGenerator.generate_polygon(precip_data, latitude, longitude) do
-          {:ok, polygon} ->
-            # Cache the radar-based zone
-            cache_raining_zone_radar(polygon, bounds)
-            get_droplets_in_zone(polygon, time_window_hours)
+    # Fetch current RainViewer radar timestamp
+    case fetch_radar_timestamp() do
+      {:ok, timestamp} ->
+        # Sample precipitation grid from RainViewer tiles (ensures perfect alignment)
+        case Weather.RadarTileSampler.sample_precipitation_grid(
+               elem(bounds, 0),
+               elem(bounds, 1),
+               elem(bounds, 2),
+               elem(bounds, 3),
+               grid_step: 0.1,
+               zoom: 8,
+               timestamp: timestamp
+             ) do
+          {:ok, precip_data} ->
+            # Generate contour polygon from precipitation data
+            case Weather.ContourGenerator.generate_polygon(precip_data, latitude, longitude) do
+              {:ok, polygon} ->
+                # Cache the radar-based zone
+                cache_raining_zone_radar(polygon, bounds)
+                get_droplets_in_zone(polygon, time_window_hours)
 
-          {:error, :user_not_in_rain} ->
+              {:error, :user_not_in_rain} ->
+                {:error, :no_rain}
+
+              {:error, reason} ->
+                {:error, reason}
+            end
+
+          {:error, :no_precipitation} ->
             {:error, :no_rain}
 
           {:error, reason} ->
             {:error, reason}
         end
 
-      {:error, :no_precipitation} ->
-        {:error, :no_rain}
+      {:error, reason} ->
+        require Logger
+        Logger.error("Failed to fetch radar timestamp: #{inspect(reason)}")
+        {:error, :radar_unavailable}
+    end
+  end
+
+  # Fetch current RainViewer radar timestamp
+  defp fetch_radar_timestamp do
+    url = "https://api.rainviewer.com/public/weather-maps.json"
+
+    case Req.get(url) do
+      {:ok, %{status: 200, body: body}} when is_map(body) ->
+        case get_in(body, ["radar", "past"]) do
+          past when is_list(past) and length(past) > 0 ->
+            latest = List.last(past)
+            timestamp = Map.get(latest, "time")
+            {:ok, timestamp}
+
+          _ ->
+            require Logger
+            Logger.error("Invalid radar data structure in response")
+            {:error, :invalid_radar_data}
+        end
+
+      {:ok, %{status: status, body: body}} ->
+        require Logger
+        Logger.error("RainViewer API error - Status: #{status}, Body: #{inspect(body)}")
+        {:error, {:http_error, status}}
 
       {:error, reason} ->
+        require Logger
+        Logger.error("Network error fetching radar timestamp: #{inspect(reason)}")
         {:error, reason}
     end
   end

@@ -64,6 +64,7 @@ defmodule Raining.MixProject do
       {:req, "~> 0.5"},
       {:geo, "~> 3.6"},
       {:geo_postgis, "~> 3.6"},
+      {:vix, "~> 0.33"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.26"},

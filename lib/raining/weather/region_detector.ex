@@ -120,7 +120,9 @@ defmodule Raining.Weather.RegionDetector do
 
     # Add neighbors to cluster and visited set
     new_cluster = cluster ++ neighbors
-    new_visited = Enum.reduce(neighbors, visited, fn point, acc -> MapSet.put(acc, point_to_key(point)) end)
+
+    new_visited =
+      Enum.reduce(neighbors, visited, fn point, acc -> MapSet.put(acc, point_to_key(point)) end)
 
     # Continue BFS with neighbors
     grow_cluster_recursive(

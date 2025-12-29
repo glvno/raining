@@ -16,6 +16,7 @@ defmodule Mix.Tasks.Demo.GenerateZones do
   alias Raining.Weather
   alias Raining.Weather.ContourGenerator
   alias Raining.Weather.RegionDetector
+  alias Raining.Weather.RadarTileSampler
   alias Raining.Demo
 
   @shortdoc "Captures precipitation snapshot and auto-detects rainy regions for demo mode"
@@ -95,7 +96,7 @@ defmodule Mix.Tasks.Demo.GenerateZones do
         # Generate zones and droplets for each region
         zones =
           regions
-          |> Enum.map(&generate_zone_for_region/1)
+          |> Enum.map(&generate_zone_for_region(&1, radar_timestamp))
           |> Enum.filter(&(&1 != nil))
 
         if Enum.empty?(zones) do
@@ -120,6 +121,7 @@ defmodule Mix.Tasks.Demo.GenerateZones do
     @scan_areas
     |> Enum.flat_map(fn area ->
       IO.puts("Scanning #{area.name} for precipitation...")
+
       IO.puts(
         "  Area: #{area.min_lat}°N to #{area.max_lat}°N, #{area.min_lng}°E to #{area.max_lng}°E (grid: #{area.grid_step}°)"
       )
@@ -146,19 +148,85 @@ defmodule Mix.Tasks.Demo.GenerateZones do
   end
 
   # Generate zone (polygon + droplets) for a detected region
-  defp generate_zone_for_region(region) do
+  defp generate_zone_for_region(region, radar_timestamp) do
     {center_lat, center_lng} = region.center
     name = region.name
 
     IO.puts("Generating zone for #{name} (center: #{center_lat}, #{center_lng})...")
-    IO.puts("  Points: #{region.point_count}, Total precip: #{Float.round(region.total_precip, 1)}mm")
 
-    # Prepare precipitation data for ContourGenerator
-    precip_data = %{
-      points: region.points,
-      bounds: calculate_bounds_from_points(region.points)
+    IO.puts(
+      "  Coarse scan: #{region.point_count} points, Total precip: #{Float.round(region.total_precip, 1)}mm"
+    )
+
+    # Phase 2: Fetch high-resolution data for this specific region
+    # Calculate tight bounding box around the coarse grid points with padding
+    coarse_bounds = calculate_bounds_from_points(region.points)
+    {min_lat, max_lat, min_lng, max_lng} = coarse_bounds
+
+    # Add padding (0.5 degrees ~ 55km) to ensure we capture the full rain area
+    padding = 0.5
+
+    padded_bounds = {
+      min_lat - padding,
+      max_lat + padding,
+      min_lng - padding,
+      max_lng + padding
     }
 
+    IO.puts("  Fetching high-resolution radar tile data for refined contour...")
+
+    IO.puts(
+      "  Bounds: #{Float.round(elem(padded_bounds, 0), 1)}° to #{Float.round(elem(padded_bounds, 1), 1)}°N, #{Float.round(elem(padded_bounds, 2), 1)}° to #{Float.round(elem(padded_bounds, 3), 1)}°E"
+    )
+
+    # Fetch high-resolution precipitation data from RainViewer tiles (0.2 degree grid ~ 22km resolution)
+    # This ensures perfect alignment with the radar overlay displayed in the frontend
+    case RadarTileSampler.sample_precipitation_grid(
+           elem(padded_bounds, 0),
+           elem(padded_bounds, 1),
+           elem(padded_bounds, 2),
+           elem(padded_bounds, 3),
+           grid_step: 0.2,
+           zoom: 6,
+           timestamp: radar_timestamp
+         ) do
+      {:ok, highres_precip_data} ->
+        IO.puts("  ✓ Got #{length(highres_precip_data.points)} high-resolution points")
+
+        # Generate contour from high-resolution data
+        generate_polygon_and_store(
+          highres_precip_data,
+          center_lat,
+          center_lng,
+          name,
+          region
+        )
+
+      {:error, :no_precipitation} ->
+        # Fallback to coarse data if high-res fetch fails
+        IO.puts("  ⚠ High-res fetch found no precipitation, falling back to coarse data")
+
+        precip_data = %{
+          points: region.points,
+          bounds: coarse_bounds
+        }
+
+        generate_polygon_and_store(precip_data, center_lat, center_lng, name, region)
+
+      {:error, reason} ->
+        IO.puts("  ✗ High-res fetch failed: #{inspect(reason)}, falling back to coarse data")
+
+        precip_data = %{
+          points: region.points,
+          bounds: coarse_bounds
+        }
+
+        generate_polygon_and_store(precip_data, center_lat, center_lng, name, region)
+    end
+  end
+
+  # Helper function to generate polygon and store snapshot
+  defp generate_polygon_and_store(precip_data, center_lat, center_lng, name, region) do
     case ContourGenerator.generate_polygon(precip_data, center_lat, center_lng) do
       {:ok, polygon} ->
         {:ok, geojson} = Geo.JSON.encode(polygon)
@@ -172,11 +240,11 @@ defmodule Mix.Tasks.Demo.GenerateZones do
                snapshot_timestamp: snapshot_timestamp,
                center_lat: center_lat,
                center_lng: center_lng,
-               precipitation_grid: %{points: region.points},
+               precipitation_grid: %{points: precip_data.points},
                metadata: %{
                  max_precip_mm: region.max_precip,
                  total_precip_mm: region.total_precip,
-                 point_count: region.point_count
+                 point_count: length(precip_data.points)
                }
              }) do
           {:ok, _snapshot} ->
@@ -275,7 +343,7 @@ defmodule Mix.Tasks.Demo.GenerateZones do
       coords
       |> Enum.chunk_every(2, 1, :discard)
       |> Enum.reduce(false, fn [{x1, y1}, {x2, y2}], acc ->
-        if (y1 > lat) != (y2 > lat) and
+        if y1 > lat != y2 > lat and
              lng < (x2 - x1) * (lat - y1) / (y2 - y1) + x1 do
           not acc
         else

@@ -24,7 +24,10 @@
       "Bash(mix phx.server:*)",
       "Bash(mix run:*)",
       "Bash(npm search:*)",
-      "mcp__tidewave__get_ecto_schemas"
+      "mcp__tidewave__get_ecto_schemas",
+      "WebFetch(domain:github.com)",
+      "Bash(mix test_radar_sampling:*)",
+      "mcp__tidewave__execute_sql_query"
     ]
   }
 }
