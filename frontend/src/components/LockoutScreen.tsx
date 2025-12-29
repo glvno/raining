@@ -9,7 +9,7 @@ export function LockoutScreen() {
           Come back when it's raining
         </p>
         <div className="text-6xl mt-8">
-          ☀️
+          ️
         </div>
       </div>
     </div>

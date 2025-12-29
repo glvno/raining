@@ -17,7 +17,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return (
       <div className="min-h-full flex items-center justify-center bg-gray-50">
         <div className="text-center space-y-4">
-          <div className="text-4xl animate-pulse">🌧️</div>
+          <div className="text-4xl animate-pulse">️</div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -34,7 +34,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return (
       <div className="min-h-full flex items-center justify-center bg-gray-50">
         <div className="text-center space-y-4 px-4">
-          <div className="text-4xl">⚠️</div>
+          <div className="text-4xl">️</div>
           <h2 className="text-2xl font-bold text-gray-800">Location Error</h2>
           <p className="text-gray-600">{locationError}</p>
           <p className="text-sm text-gray-500">

@@ -1,4 +1,4 @@
-/** 🌼
+/** 
  *  @license MIT
  *  daisyUI bundle
  *  https://daisyui.com/
@@ -3673,7 +3673,7 @@ var object_default28 = {
         '&:before': {
           rotate: '0deg',
           'background-color': 'transparent',
-          '--tw-content': '"✔︎"',
+          '--tw-content': '"︎"',
           'clip-path': 'none',
         },
       },
@@ -3681,7 +3681,7 @@ var object_default28 = {
         '&:before': {
           rotate: '0deg',
           'background-color': 'transparent',
-          '--tw-content': '"✔︎"',
+          '--tw-content': '"︎"',
           'clip-path': 'none',
         },
       },

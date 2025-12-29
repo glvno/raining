@@ -1,5 +1,8 @@
 import type { GeoJSONGeometry } from '../types';
 
+// Polygon coordinates: array of rings, each ring is array of [lng, lat] pairs
+type PolygonCoordinates = [number, number][][];
+
 /**
  * Check if a point (lat, lng) is inside a GeoJSON polygon
  * Uses ray-casting algorithm
@@ -14,7 +17,8 @@ export function isPointInPolygon(
   }
 
   // Get the outer ring coordinates (first array in coordinates)
-  const ring = polygon.coordinates[0];
+  // Cast to polygon coordinates since we've verified the type
+  const ring = (polygon.coordinates as PolygonCoordinates)[0];
 
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {

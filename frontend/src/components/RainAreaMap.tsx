@@ -1,7 +1,5 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
-import { DEMO_RADAR_TIMESTAMP } from '../data/demoData';
 import type { GeoJSONGeometry, Droplet } from '../types';
 
 interface RainAreaMapProps {
@@ -11,7 +9,6 @@ interface RainAreaMapProps {
 }
 
 export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapProps) {
-  const [searchParams] = useSearchParams();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const radarLayerRef = useRef<L.TileLayer | null>(null);
@@ -25,22 +22,10 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
     dropletMarkers: [],
   });
 
-  // Check if demo mode is enabled
-  const isDemoMode = searchParams.get('demo') === 'true';
+  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(null);
 
-  // Initialize radar timestamp (demo mode uses fixed snapshot)
-  const initialTimestamp = useMemo(
-    () => (isDemoMode ? DEMO_RADAR_TIMESTAMP : null),
-    [isDemoMode]
-  );
-  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(initialTimestamp);
-
-  // Fetch live radar timestamp (skip in demo mode)
+  // Fetch live radar timestamp
   useEffect(() => {
-    if (isDemoMode) {
-      return;
-    }
-
     const fetchRadarTimestamp = async () => {
       try {
         const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
@@ -59,7 +44,7 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
     // Refresh radar every 5 minutes
     const interval = setInterval(fetchRadarTimestamp, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [isDemoMode]);
+  }, []);
 
   // Initialize map on mount
   useEffect(() => {
@@ -85,15 +70,19 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
       },
       onAdd: function () {
         const container = L.DomUtil.create('div', 'leaflet-control-attribution-custom');
-        container.style.cssText = 'background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer; user-select: none;';
+        container.style.cssText =
+          'background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer; user-select: none;';
 
         const icon = L.DomUtil.create('div', 'attribution-icon', container);
-        icon.innerHTML = 'ⓘ';
-        icon.style.cssText = 'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #666;';
+        icon.innerHTML = 'i';
+        icon.style.cssText =
+          'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #666;';
 
         const content = L.DomUtil.create('div', 'attribution-content', container);
-        content.innerHTML = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> | <a href="https://carto.com/attributions" target="_blank">CARTO</a> | <a href="https://rainviewer.com" target="_blank">RainViewer</a> | <a href="https://leafletjs.com" target="_blank">Leaflet</a>';
-        content.style.cssText = 'display: none; padding: 4px 8px; font-size: 11px; white-space: nowrap; border-top: 1px solid #eee; margin-top: 4px;';
+        content.innerHTML =
+          '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> | <a href="https://carto.com/attributions" target="_blank">CARTO</a> | <a href="https://rainviewer.com" target="_blank">RainViewer</a> | <a href="https://leafletjs.com" target="_blank">Leaflet</a>';
+        content.style.cssText =
+          'display: none; padding: 4px 8px; font-size: 11px; white-space: nowrap; border-top: 1px solid #eee; margin-top: 4px;';
 
         let isExpanded = false;
 
@@ -234,7 +223,7 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
         `<div style="min-width: 150px;">
           <p style="font-weight: 600; margin-bottom: 4px;">${droplet.user.email}</p>
           <p style="margin-bottom: 0;">${droplet.content}</p>
-        </div>`,
+        </div>`
       );
 
       layers.dropletMarkers.push(marker);

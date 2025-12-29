@@ -19,7 +19,7 @@ const Nav: React.FC = () => {
 		<nav className="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
 			<div className="flex items-center gap-8">
 				<NavLink to="/" className="flex items-center gap-2 text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-					<span>🌧️</span>
+					<span>️</span>
 					<span>Raining</span>
 				</NavLink>
 
@@ -35,7 +35,7 @@ const Nav: React.FC = () => {
 								}`
 							}
 						>
-							🌊 Deluge
+							Deluge
 						</NavLink>
 						<NavLink
 							to={getPathWithParams('/drizzle')}
@@ -47,7 +47,7 @@ const Nav: React.FC = () => {
 								}`
 							}
 						>
-							💧 Drizzle
+							Drizzle
 						</NavLink>
 					</div>
 				)}

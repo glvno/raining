@@ -23,7 +23,7 @@ export function DropletCard({ droplet }: DropletCardProps) {
       <p className="text-gray-800 whitespace-pre-wrap break-words">{droplet.content}</p>
 
       <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
-        <span>📍</span>
+        <span></span>
         <span>
           {droplet.latitude.toFixed(2)}, {droplet.longitude.toFixed(2)}
         </span>

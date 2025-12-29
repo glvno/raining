@@ -1,8 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { useSearchParams } from 'react-router';
 import { useAuth } from './AuthContext';
-import { DEMO_USER_LOCATION, DEMO_FEED_DATA } from '../data/demoData';
 import type { FeedResponse } from '../types';
 
 const LOCATION_KEY = 'raining_location';
@@ -24,73 +22,47 @@ const LocationContext = createContext<LocationContextType | undefined>(undefined
 
 export function LocationProvider({ children }: { children: ReactNode }) {
   const { token, isAuthenticated } = useAuth();
-  const [searchParams] = useSearchParams();
-  const [realLatitude, setRealLatitude] = useState<number | null>(null);
-  const [realLongitude, setRealLongitude] = useState<number | null>(null);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [isRaining, setIsRaining] = useState(false);
   const [rainAreaSize, setRainAreaSize] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if demo mode is enabled - recomputes when URL params change
-  const isDemoMode = searchParams.get('demo') === 'true';
-
-  // Use demo location if in demo mode, otherwise use real location
-  const latitude = isDemoMode ? DEMO_USER_LOCATION.latitude : realLatitude;
-  const longitude = isDemoMode ? DEMO_USER_LOCATION.longitude : realLongitude;
-
-  // Initialize demo mode data
+  // Load cached location from localStorage
   useEffect(() => {
-    if (isDemoMode) {
-      setIsRaining(true);
-      setRainAreaSize(DEMO_FEED_DATA.count);
-      setIsLoading(false);
-      console.log('[LocationContext] Demo mode active - using demo data');
-    }
-  }, [isDemoMode]);
-
-  // Load cached location from localStorage (skip in demo mode)
-  useEffect(() => {
-    if (isDemoMode) return;
-
     const cached = localStorage.getItem(LOCATION_KEY);
     if (cached) {
       try {
         const { lat, lng } = JSON.parse(cached);
-        setRealLatitude(lat);
-        setRealLongitude(lng);
+        setLatitude(lat);
+        setLongitude(lng);
       } catch (err) {
         console.error('Failed to parse cached location:', err);
       }
     }
-  }, [isDemoMode]);
+  }, []);
 
-  // Request geolocation permission on mount (skip in demo mode)
+  // Request geolocation permission on mount
   useEffect(() => {
-    if (isDemoMode) return;
-
-    if (!realLatitude || !realLongitude) {
+    if (!latitude || !longitude) {
       requestGeolocation();
     } else {
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemoMode]); // Only check on mode change, not when location updates
+  }, []); // Only run on mount
 
-  // Check rain status when location or auth changes (skip in demo mode)
+  // Check rain status when location or auth changes
   useEffect(() => {
-    if (isDemoMode) return;
-
     if (latitude && longitude && isAuthenticated && token) {
       checkRainStatus();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latitude, longitude, isAuthenticated, token, isDemoMode]); // checkRainStatus is stable
+  }, [latitude, longitude, isAuthenticated, token]); // checkRainStatus is stable
 
-  // Auto-refresh rain status every 30 seconds (skip in demo mode)
+  // Auto-refresh rain status every 30 seconds
   useEffect(() => {
-    if (isDemoMode) return;
-
     if (!latitude || !longitude || !isAuthenticated || !token) {
       return;
     }
@@ -101,7 +73,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latitude, longitude, isAuthenticated, token, isDemoMode]); // checkRainStatus is stable
+  }, [latitude, longitude, isAuthenticated, token]); // checkRainStatus is stable
 
   const requestGeolocation = () => {
     setIsLoading(true);
@@ -117,8 +89,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        setRealLatitude(lat);
-        setRealLongitude(lng);
+        setLatitude(lat);
+        setLongitude(lng);
         localStorage.setItem(LOCATION_KEY, JSON.stringify({ lat, lng }));
         setIsLoading(false);
       },
@@ -145,7 +117,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -163,7 +135,16 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       // Rain detected if there's NO message saying "Not raining"
       // Message field only exists when it's not raining
       const raining = !data.message;
-      console.log('[LocationContext] Rain detected:', raining, 'Message:', data.message, 'Count:', data.count, 'Droplets:', data.droplets.length);
+      console.log(
+        '[LocationContext] Rain detected:',
+        raining,
+        'Message:',
+        data.message,
+        'Count:',
+        data.count,
+        'Droplets:',
+        data.droplets.length
+      );
 
       setIsRaining(raining);
       setRainAreaSize(data.count || 0);
@@ -181,13 +162,11 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   };
 
   const setManualLocation = (lat: number, lng: number) => {
-    // Only allow in development mode and not in demo mode
-    if (import.meta.env.DEV && !isDemoMode) {
-      setRealLatitude(lat);
-      setRealLongitude(lng);
+    // Only allow in development mode
+    if (import.meta.env.DEV) {
+      setLatitude(lat);
+      setLongitude(lng);
       localStorage.setItem(LOCATION_KEY, JSON.stringify({ lat, lng }));
-    } else if (isDemoMode) {
-      console.warn('Cannot override location in demo mode');
     } else {
       console.warn('Manual location override is only available in development mode');
     }

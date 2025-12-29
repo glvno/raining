@@ -1,4 +1,4 @@
-/** 🌼
+/** 
  *  @license MIT
  *  daisyUI bundle
  *  https://daisyui.com/

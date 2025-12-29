@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
-import { useSearchParams } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet.markercluster';
-import { DEMO_RADAR_TIMESTAMP } from '../data/demoData';
 import type { GeoJSONGeometry, Droplet } from '../types';
 
 interface GlobalMapProps {
@@ -12,7 +10,6 @@ interface GlobalMapProps {
 }
 
 export function GlobalMap({ rainZones, userLocation, droplets }: GlobalMapProps) {
-  const [searchParams] = useSearchParams();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const radarLayerRef = useRef<L.TileLayer | null>(null);
@@ -26,22 +23,10 @@ export function GlobalMap({ rainZones, userLocation, droplets }: GlobalMapProps)
     markerClusterGroup: null,
   });
 
-  // Check if demo mode is enabled
-  const isDemoMode = searchParams.get('demo') === 'true';
+  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(null);
 
-  // Initialize radar timestamp (demo mode uses fixed snapshot)
-  const initialTimestamp = useMemo(
-    () => (isDemoMode ? DEMO_RADAR_TIMESTAMP : null),
-    [isDemoMode]
-  );
-  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(initialTimestamp);
-
-  // Fetch live radar timestamp (skip in demo mode)
+  // Fetch live radar timestamp
   useEffect(() => {
-    if (isDemoMode) {
-      return;
-    }
-
     const fetchRadarTimestamp = async () => {
       try {
         const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
@@ -58,7 +43,7 @@ export function GlobalMap({ rainZones, userLocation, droplets }: GlobalMapProps)
     fetchRadarTimestamp();
     const interval = setInterval(fetchRadarTimestamp, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [isDemoMode]);
+  }, []);
 
   // Initialize map on mount
   useEffect(() => {
@@ -87,7 +72,7 @@ export function GlobalMap({ rainZones, userLocation, droplets }: GlobalMapProps)
           'background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer; user-select: none;';
 
         const icon = L.DomUtil.create('div', 'attribution-icon', container);
-        icon.innerHTML = 'ⓘ';
+        icon.innerHTML = 'i';
         icon.style.cssText =
           'width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #666;';
 

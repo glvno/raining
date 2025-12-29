@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { DropletComposer } from '../components/DropletComposer';
 import { DropletCard } from '../components/DropletCard';
 import { RainAreaIndicator } from '../components/RainAreaIndicator';
 import { GlobalMap } from '../components/GlobalMap';
-import { DEMO_FEED_DATA, DEMO_GLOBAL_RAIN_ZONES } from '../data/demoData';
 import type { Droplet, GeoJSONGeometry } from '../types';
 
 const API_BASE = '/api';
 const REFRESH_INTERVAL = 30000; // 30 seconds
 
 export default function Deluge() {
-  const [searchParams] = useSearchParams();
   const [droplets, setDroplets] = useState<Droplet[]>([]);
   const [rainZones, setRainZones] = useState<GeoJSONGeometry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,20 +19,17 @@ export default function Deluge() {
   const { token } = useAuth();
   const { latitude, longitude } = useLocation();
 
-  // Check if demo mode is enabled via URL parameter
-  const isDemoMode = searchParams.get('demo') === 'true';
-
   // Load feed on mount and when auth changes
   useEffect(() => {
     if (token) {
       loadFeed();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, isDemoMode]); // loadFeed is stable
+  }, [token]); // loadFeed is stable
 
-  // Auto-refresh feed every 30 seconds (skip in demo mode)
+  // Auto-refresh feed every 30 seconds
   useEffect(() => {
-    if (!token || isDemoMode) {
+    if (!token) {
       return;
     }
 
@@ -45,46 +39,17 @@ export default function Deluge() {
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, isDemoMode]); // loadFeed is stable
+  }, [token]); // loadFeed is stable
 
   const loadFeed = async () => {
     if (!token) {
       return;
     }
 
-    // Use demo data if in demo mode
-    if (isDemoMode) {
-      // Keep droplets hardcoded (as per requirement)
-      setDroplets(DEMO_FEED_DATA.droplets);
-
-      // Fetch demo zones from backend API
-      try {
-        const response = await fetch(`${API_BASE}/demo/zones`);
-        if (response.ok) {
-          const data = await response.json();
-          // Extract rain_zone from each zone object
-          const zones = data.zones.map((z: { rain_zone: GeoJSONGeometry }) => z.rain_zone);
-          setRainZones(zones);
-        } else {
-          // Fallback to hardcoded zones if API fails
-          console.warn('Failed to fetch demo zones from API, using hardcoded fallback');
-          setRainZones(DEMO_GLOBAL_RAIN_ZONES as GeoJSONGeometry[]);
-        }
-      } catch (err) {
-        // Fallback to hardcoded zones if API fails
-        console.warn('Error fetching demo zones:', err);
-        setRainZones(DEMO_GLOBAL_RAIN_ZONES as GeoJSONGeometry[]);
-      }
-
-      setError(null);
-      setIsLoading(false);
-      return;
-    }
-
     try {
       const response = await fetch(`${API_BASE}/droplets/global-feed`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -113,7 +78,7 @@ export default function Deluge() {
     return (
       <div className="min-h-full bg-gray-50 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="text-4xl animate-pulse">🌧️</div>
+          <div className="text-4xl animate-pulse">Loading...</div>
           <p className="text-gray-600">Loading global feed...</p>
         </div>
       </div>
@@ -124,20 +89,9 @@ export default function Deluge() {
     <div className="min-h-full bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">🌊 Deluge</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Deluge</h1>
           <RainAreaIndicator dropletCount={droplets.length} />
         </div>
-
-        {isDemoMode && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center gap-2">
-              <span className="text-blue-800 font-semibold">🎭 Demo Mode</span>
-              <span className="text-sm text-blue-600">
-                Showing global rain activity: Indiana 🇺🇸 • Seattle 🌲 • Singapore 🌴
-              </span>
-            </div>
-          </div>
-        )}
 
         <div className="mb-6">
           <GlobalMap
@@ -159,17 +113,11 @@ export default function Deluge() {
           {droplets.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
               <div className="text-4xl mb-4">🌊</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No droplets yet
-              </h3>
-              <p className="text-gray-600">
-                Be the first to post from around the world!
-              </p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No droplets yet</h3>
+              <p className="text-gray-600">Be the first to post from around the world!</p>
             </div>
           ) : (
-            droplets.map((droplet) => (
-              <DropletCard key={droplet.id} droplet={droplet} />
-            ))
+            droplets.map((droplet) => <DropletCard key={droplet.id} droplet={droplet} />)
           )}
         </div>
       </div>
