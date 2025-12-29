@@ -23,7 +23,8 @@
       "WebFetch(domain:www.rainviewer.com)",
       "Bash(mix phx.server:*)",
       "Bash(mix run:*)",
-      "Bash(npm search:*)"
+      "Bash(npm search:*)",
+      "mcp__tidewave__get_ecto_schemas"
     ]
   }
 }

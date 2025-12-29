@@ -52,8 +52,28 @@ export default function Deluge() {
 
     // Use demo data if in demo mode
     if (isDemoMode) {
+      // Keep droplets hardcoded (as per requirement)
       setDroplets(DEMO_FEED_DATA.droplets);
-      setRainZones(DEMO_GLOBAL_RAIN_ZONES as GeoJSONGeometry[]);
+
+      // Fetch demo zones from backend API
+      try {
+        const response = await fetch(`${API_BASE}/demo/zones`);
+        if (response.ok) {
+          const data = await response.json();
+          // Extract rain_zone from each zone object
+          const zones = data.zones.map((z: any) => z.rain_zone);
+          setRainZones(zones);
+        } else {
+          // Fallback to hardcoded zones if API fails
+          console.warn('Failed to fetch demo zones from API, using hardcoded fallback');
+          setRainZones(DEMO_GLOBAL_RAIN_ZONES as GeoJSONGeometry[]);
+        }
+      } catch (err) {
+        // Fallback to hardcoded zones if API fails
+        console.warn('Error fetching demo zones:', err);
+        setRainZones(DEMO_GLOBAL_RAIN_ZONES as GeoJSONGeometry[]);
+      }
+
       setError(null);
       setIsLoading(false);
       return;

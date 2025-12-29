@@ -1,6 +1,77 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { useLocation } from '../contexts/LocationContext';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+interface LocationPickerMapProps {
+  currentLat: number | null;
+  currentLng: number | null;
+  onLocationClick: (lat: number, lng: number) => void;
+}
+
+function LocationPickerMap({ currentLat, currentLng, onLocationClick }: LocationPickerMapProps) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+
+  // Initialize map on mount
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const defaultCenter: [number, number] = [currentLat || 40, currentLng || -100];
+    const defaultZoom = currentLat && currentLng ? 8 : 3;
+
+    const map = L.map(mapContainerRef.current, {
+      center: defaultCenter,
+      zoom: defaultZoom,
+      scrollWheelZoom: true,
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+    }).addTo(map);
+
+    // Add click handler
+    map.on('click', (e) => {
+      const { lat, lng } = e.latlng;
+      onLocationClick(lat, lng);
+    });
+
+    mapRef.current = map;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Update marker when location changes
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    // Remove existing marker
+    if (markerRef.current) {
+      markerRef.current.remove();
+      markerRef.current = null;
+    }
+
+    // Add new marker if location is set
+    if (currentLat && currentLng) {
+      const marker = L.marker([currentLat, currentLng]).addTo(mapRef.current);
+      marker.bindPopup('Your Location');
+      markerRef.current = marker;
+    }
+  }, [currentLat, currentLng]);
+
+  return (
+    <div
+      ref={mapContainerRef}
+      className="h-48 w-full cursor-crosshair"
+      style={{ minHeight: '192px' }}
+    />
+  );
+}
 
 export function DevLocationPanel() {
   const { latitude, longitude, setManualLocation } = useLocation();
@@ -129,6 +200,11 @@ export function DevLocationPanel() {
     }
   };
 
+  const handleMapClick = (lat: number, lng: number) => {
+    setManualLocation(lat, lng);
+    setIsOpen(false); // Close panel after setting location
+  };
+
   if (!isOpen) {
     return (
       <button
@@ -191,6 +267,24 @@ export function DevLocationPanel() {
           Lat: {lat || '(empty)'} | Lng: {lng || '(empty)'}
         </p>
       </div>
+
+      {!isDemoMode && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-purple-700 mb-2">
+            Click on map to set location:
+          </label>
+          <div className="border-2 border-purple-300 rounded-lg overflow-hidden">
+            <LocationPickerMap
+              currentLat={latitude}
+              currentLng={longitude}
+              onLocationClick={handleMapClick}
+            />
+          </div>
+          <p className="text-xs text-purple-600 mt-1">
+            💡 Click anywhere to set your location
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-2">
         <div>

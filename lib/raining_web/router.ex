@@ -26,6 +26,9 @@ defmodule RainingWeb.Router do
     post "/users/register", UserRegistrationController, :create
     post "/users/login", UserSessionController, :create
     delete "/users/logout", UserSessionController, :delete
+
+    # Demo endpoints (public, no auth required)
+    get "/demo/zones", DemoController, :zones
   end
 
   scope "/api", OpenApiSpex do

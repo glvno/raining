@@ -1,89 +1,212 @@
 defmodule Mix.Tasks.Demo.GenerateZones do
   @moduledoc """
-  Generates real precipitation zone polygons and mock droplets for demo mode.
+  Captures a precipitation snapshot and automatically identifies distinct rainy regions.
 
-  Uses the production Weather module and ContourGenerator to create authentic
-  rain zone polygons from live precipitation data. Also generates randomized
-  droplets within those zones.
+  Fetches live precipitation data, uses clustering to find 3 significant rain areas,
+  generates contour polygons, creates demo droplets, and stores everything in the database.
 
   ## Usage
 
       mix demo.generate_zones
 
-  Outputs TypeScript/JavaScript code ready to paste into frontend/src/data/demoData.ts
+  Stores snapshots in database for demo mode. No manual copy-paste needed!
   """
   use Mix.Task
 
   alias Raining.Weather
   alias Raining.Weather.ContourGenerator
+  alias Raining.Weather.RegionDetector
+  alias Raining.Demo
 
-  @shortdoc "Generates real precipitation zone polygons and mock droplets for demo mode"
+  @shortdoc "Captures precipitation snapshot and auto-detects rainy regions for demo mode"
 
-  @demo_locations [
-    %{name: "Indiana", lat: 39.644, lng: -86.8645, droplet_count: 9},
-    %{name: "Seattle", lat: 47.6, lng: -122.3, droplet_count: 3},
-    %{name: "Singapore", lat: 1.3, lng: 103.85, droplet_count: 3}
+  # Multiple scan areas - ONE API call per continent (coarse grid prevents 414 errors)
+  # We'll combine results and use clustering to find 3 distinct regions globally
+  @scan_areas [
+    %{
+      name: "North America",
+      min_lat: 25.0,
+      max_lat: 50.0,
+      min_lng: -125.0,
+      max_lng: -65.0,
+      grid_step: 2.0
+    },
+    %{
+      name: "South America",
+      min_lat: -35.0,
+      max_lat: 10.0,
+      min_lng: -80.0,
+      max_lng: -35.0,
+      grid_step: 2.5
+    },
+    %{
+      name: "Europe",
+      min_lat: 35.0,
+      max_lat: 60.0,
+      min_lng: -10.0,
+      max_lng: 40.0,
+      grid_step: 2.0
+    },
+    %{
+      name: "Asia-Pacific",
+      min_lat: -10.0,
+      max_lat: 40.0,
+      min_lng: 95.0,
+      max_lng: 145.0,
+      grid_step: 3.0
+    }
   ]
+
+  @droplet_count_per_region 5
 
   @impl Mix.Task
   def run(_args) do
     Mix.Task.run("app.start")
 
-    IO.puts("🌧️  Generating precipitation zones from live weather data...\n")
+    IO.puts("🌧️  Capturing precipitation snapshot and detecting rainy regions...\n")
 
     # Fetch current RainViewer timestamp
     radar_timestamp = fetch_radar_timestamp()
 
-    # Generate polygons for each location
-    zones =
-      @demo_locations
-      |> Enum.map(&generate_zone/1)
-      |> Enum.filter(&(&1 != nil))
+    # Fetch precipitation data from all continents (one API call per continent)
+    all_precip_points = fetch_precipitation_from_continents()
 
-    if Enum.empty?(zones) do
-      IO.puts("\n❌ No precipitation zones generated!")
-      IO.puts("Try again later when there's active precipitation, or adjust location coordinates.\n")
+    if Enum.empty?(all_precip_points) do
+      IO.puts("\n❌ No significant precipitation found globally!")
+      IO.puts("Try again later when there's more active precipitation worldwide.\n")
       :ok
     else
-      # Generate mock droplets within zones
-      droplets = generate_droplets(zones)
+      IO.puts("✓ Found #{length(all_precip_points)} precipitation points\n")
 
-      # Output formatted code
-      output_demo_code(zones, droplets, radar_timestamp)
+      # Identify 3 distinct rainy regions using clustering
+      IO.puts("🔍 Detecting distinct rainy regions...")
+      regions = RegionDetector.find_top_regions(all_precip_points, count: 3, min_cluster_size: 15)
+
+      if length(regions) < 3 do
+        IO.puts(
+          "\n⚠️  Only found #{length(regions)} significant regions. Need at least 3 for demo mode."
+        )
+
+        IO.puts("Try again later when there's more widespread precipitation.\n")
+        :ok
+      else
+        IO.puts("✓ Identified #{length(regions)} distinct regions\n")
+
+        # Generate zones and droplets for each region
+        zones =
+          regions
+          |> Enum.map(&generate_zone_for_region/1)
+          |> Enum.filter(&(&1 != nil))
+
+        if Enum.empty?(zones) do
+          IO.puts("\n❌ Failed to generate valid zones from detected regions!")
+          :ok
+        else
+          # Generate mock droplets within zones
+          droplets = generate_droplets(zones)
+
+          # Output formatted code (for reference/backup)
+          output_demo_code(zones, droplets, radar_timestamp)
+
+          IO.puts("\n✅ Demo data successfully stored in database!")
+          IO.puts("Run the app and visit /deluge?demo=true to see your demo zones.\n")
+        end
+      end
     end
   end
 
-  defp generate_zone(%{name: name, lat: lat, lng: lng} = location) do
-    IO.puts("Generating zone for #{name} (#{lat}, #{lng})...")
+  # Fetch precipitation data from all continents (ONE API call per continent)
+  defp fetch_precipitation_from_continents do
+    @scan_areas
+    |> Enum.flat_map(fn area ->
+      IO.puts("Scanning #{area.name} for precipitation...")
+      IO.puts(
+        "  Area: #{area.min_lat}°N to #{area.max_lat}°N, #{area.min_lng}°E to #{area.max_lng}°E (grid: #{area.grid_step}°)"
+      )
 
-    # Calculate 2° bounding box
-    {min_lat, max_lat, min_lng, max_lng} = calculate_bounds(lat, lng)
+      # Use custom grid step per area to prevent 414 URI Too Long errors
+      # Larger areas use coarser grids to keep URL manageable
+      case Weather.get_precipitation_grid(
+             area.min_lat,
+             area.max_lat,
+             area.min_lng,
+             area.max_lng,
+             grid_step: area.grid_step,
+             threshold: 0.3
+           ) do
+        {:ok, precip_data} ->
+          IO.puts("  ✓ Found #{length(precip_data.points)} precipitation points\n")
+          precip_data.points
 
-    case Weather.get_precipitation_grid(min_lat, max_lat, min_lng, max_lng) do
-      {:ok, precip_data} ->
-        case ContourGenerator.generate_polygon(precip_data, lat, lng) do
-          {:ok, polygon} ->
-            {:ok, geojson} = Geo.JSON.encode(polygon)
-            IO.puts("✓ Generated polygon for #{name}\n")
+        {:error, reason} ->
+          IO.puts("  ✗ Error: #{inspect(reason)}\n")
+          []
+      end
+    end)
+  end
 
-            location
-            |> Map.put(:polygon, geojson)
-            |> Map.put(:raw_polygon, polygon)
+  # Generate zone (polygon + droplets) for a detected region
+  defp generate_zone_for_region(region) do
+    {center_lat, center_lng} = region.center
+    name = region.name
 
-          {:error, reason} ->
-            IO.puts("✗ Failed to generate polygon for #{name}: #{inspect(reason)}\n")
-            nil
+    IO.puts("Generating zone for #{name} (center: #{center_lat}, #{center_lng})...")
+    IO.puts("  Points: #{region.point_count}, Total precip: #{Float.round(region.total_precip, 1)}mm")
+
+    # Prepare precipitation data for ContourGenerator
+    precip_data = %{
+      points: region.points,
+      bounds: calculate_bounds_from_points(region.points)
+    }
+
+    case ContourGenerator.generate_polygon(precip_data, center_lat, center_lng) do
+      {:ok, polygon} ->
+        {:ok, geojson} = Geo.JSON.encode(polygon)
+        IO.puts("  ✓ Generated polygon for #{name}")
+
+        # Store snapshot in database
+        snapshot_timestamp = DateTime.utc_now()
+
+        case Demo.store_radar_snapshot(%{
+               region_name: name,
+               snapshot_timestamp: snapshot_timestamp,
+               center_lat: center_lat,
+               center_lng: center_lng,
+               precipitation_grid: %{points: region.points},
+               metadata: %{
+                 max_precip_mm: region.max_precip,
+                 total_precip_mm: region.total_precip,
+                 point_count: region.point_count
+               }
+             }) do
+          {:ok, _snapshot} ->
+            IO.puts("  ✓ Stored snapshot for #{name} in database\n")
+
+          {:error, changeset} ->
+            IO.puts("  ✗ Failed to store snapshot for #{name}: #{inspect(changeset.errors)}\n")
         end
 
+        %{
+          name: name,
+          lat: center_lat,
+          lng: center_lng,
+          droplet_count: @droplet_count_per_region,
+          polygon: geojson,
+          raw_polygon: polygon
+        }
+
       {:error, reason} ->
-        IO.puts("✗ No precipitation data for #{name}: #{inspect(reason)}\n")
+        IO.puts("  ✗ Failed to generate polygon for #{name}: #{inspect(reason)}\n")
         nil
     end
   end
 
-  defp calculate_bounds(lat, lng) do
-    radius = 2.0
-    {lat - radius, lat + radius, lng - radius, lng + radius}
+  # Calculate bounding box from list of precipitation points
+  defp calculate_bounds_from_points(points) do
+    lats = Enum.map(points, &elem(&1, 0))
+    lngs = Enum.map(points, &elem(&1, 1))
+
+    {Enum.min(lats), Enum.max(lats), Enum.min(lngs), Enum.max(lngs)}
   end
 
   defp generate_droplets(zones) do
@@ -117,7 +240,7 @@ defmodule Mix.Tasks.Demo.GenerateZones do
         content: generate_droplet_content(name, idx),
         user: %{
           id: id_offset + idx,
-          email: "user#{idx}@#{String.downcase(name)}.local"
+          email: "user#{id_offset + idx}@demo.local"
         },
         # Spread droplets across last 2 hours
         minutes_ago: :rand.uniform(120)
@@ -163,33 +286,27 @@ defmodule Mix.Tasks.Demo.GenerateZones do
     inside
   end
 
-  defp generate_droplet_content(location, idx) do
-    contents = %{
-      "Indiana" => [
-        "Intense rainfall here! 37mm and counting ⛈️",
-        "Heavy rain just started! Lightning everywhere ⚡",
-        "Storm moving through fast! Visibility is terrible",
-        "Major downpour in the area! 🌧️",
-        "Rain picking up intensity here! Stay safe everyone!",
-        "Steady rain here, roads starting to puddle 💧",
-        "Thunder rolling through! The storm is here 💥",
-        "Light rain continuing 🌧️",
-        "Clouds building up, rain starting to fall 🌦️"
-      ],
-      "Seattle" => [
-        "Classic Seattle drizzle! ☔",
-        "Rain hitting the Puget Sound hard right now 🌊",
-        "Another rainy day in the PNW! Coffee weather ☕"
-      ],
-      "Singapore" => [
-        "Tropical downpour! 🌴⛈️",
-        "Monsoon season intensity! Streets flooding 💧",
-        "Heavy rain near Marina Bay! 🏙️"
-      ]
-    }
+  defp generate_droplet_content(_location, idx) do
+    # Generic rain-related content for auto-detected regions
+    contents = [
+      "Intense rainfall here! Heavy downpour ⛈️",
+      "Rain just started! Getting heavier by the minute ⚡",
+      "Storm moving through fast! Stay safe everyone 🌧️",
+      "Major precipitation in the area! Roads are wet 💧",
+      "Rain picking up intensity! Umbrellas out ☔",
+      "Steady rain here, puddles forming everywhere 💦",
+      "Thunder rolling through! Nature's symphony 💥",
+      "Light rain continuing, fresh smell in the air 🌧️",
+      "Clouds building up, rain started falling 🌦️",
+      "Beautiful rain shower! Loving this weather 🌈",
+      "Caught in the rain! Classic weather moment ☁️",
+      "Rain dropping steadily, perfect cozy weather 🏠",
+      "Storm clouds overhead! Rain incoming 🌩️",
+      "Drizzle turning into proper rain now 🌊",
+      "Heavy precipitation! Nature doing its thing 🍃"
+    ]
 
-    location_contents = Map.get(contents, location, ["Rain detected!"])
-    Enum.at(location_contents, rem(idx - 1, length(location_contents)))
+    Enum.at(contents, rem(idx - 1, length(contents)))
   end
 
   defp fetch_radar_timestamp do
