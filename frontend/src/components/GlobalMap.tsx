@@ -213,13 +213,34 @@ export function GlobalMap({ rainZones, userLocation, droplets }: GlobalMapProps)
       hasContent = true;
     }
 
-    // Create marker cluster group for droplets
+    // Create marker cluster group for droplets with custom icon
     const markerClusterGroup = L.markerClusterGroup({
       showCoverageOnHover: false,
-      maxClusterRadius: 60,
-      disableClusteringAtZoom: 15,
+      maxClusterRadius: 80,
+      disableClusteringAtZoom: 10,
       spiderfyOnMaxZoom: true,
       zoomToBoundsOnClick: true,
+      iconCreateFunction: function (cluster) {
+        const childCount = cluster.getChildCount();
+        let c = ' marker-cluster-';
+
+        if (childCount < 5) {
+          c += 'small';
+        } else if (childCount < 10) {
+          c += 'medium';
+        } else {
+          c += 'large';
+        }
+
+        return new L.DivIcon({
+          html:
+            '<div style="background: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"><span style="color: white; font-weight: bold; font-size: 14px;">' +
+            childCount +
+            '</span></div>',
+          className: 'marker-cluster' + c,
+          iconSize: new L.Point(40, 40),
+        });
+      },
     });
 
     // Add droplet markers to cluster group

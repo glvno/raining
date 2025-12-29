@@ -50,9 +50,11 @@ export default function Drizzle() {
       return;
     }
 
-    // Use demo data if in demo mode
+    // Use demo data if in demo mode (only Indiana droplets for local view)
     if (isDemoMode) {
-      setDroplets(DEMO_FEED_DATA.droplets);
+      // Filter to only Indiana droplets (IDs 101-109) for local Drizzle feed
+      const localDroplets = DEMO_FEED_DATA.droplets.filter(d => d.id >= 101 && d.id <= 109);
+      setDroplets(localDroplets);
       setRainZone(DEMO_FEED_DATA.rain_zone);
       setError(null);
       setIsLoading(false);

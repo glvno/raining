@@ -177,7 +177,7 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
     const bounds = L.latLngBounds([]);
     let hasContent = false;
 
-    // Add rain zone polygon
+    // Add rain zone polygon (but don't include it in bounds for zoom calculation)
     if (rainZone) {
       const zoneLayer = L.geoJSON(rainZone as any, {
         style: {
@@ -190,8 +190,7 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
       }).addTo(map);
 
       layers.zoneLayer = zoneLayer;
-      bounds.extend(zoneLayer.getBounds());
-      hasContent = true;
+      // Don't extend bounds with rain zone - focus on droplets/user for tight local view
     }
 
     // Add user location marker (red circle)
@@ -239,9 +238,13 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
       hasContent = true;
     });
 
-    // Auto-fit map to show all content
+    // Auto-fit map to show all content with zoomed-in view
     if (hasContent && bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+      // For local view, use very tight bounds with high zoom for close-up perspective
+      map.fitBounds(bounds, {
+        padding: [15, 15] as [number, number],
+        maxZoom: 9,
+      });
     } else {
       map.setView([0, 0], 2);
     }
