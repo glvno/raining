@@ -1,36 +1,36 @@
 {
-  "_chunk-JMJ3UQ3L-DyXDjqW6.js": {
-    "file": "assets/chunk-JMJ3UQ3L-DyXDjqW6.js",
+  "_chunk-JMJ3UQ3L-D74r-Uuz.js": {
+    "file": "assets/chunk-JMJ3UQ3L-D74r-Uuz.js",
     "name": "chunk-JMJ3UQ3L"
   },
   "src/catchall.tsx?__react-router-build-client-route": {
-    "file": "assets/catchall-CP1gQ6Bl.js",
+    "file": "assets/catchall-BNJXcH3t.js",
     "name": "catchall",
     "src": "src/catchall.tsx?__react-router-build-client-route",
     "isEntry": true,
     "imports": [
-      "_chunk-JMJ3UQ3L-DyXDjqW6.js"
+      "_chunk-JMJ3UQ3L-D74r-Uuz.js"
     ]
   },
   "src/entry.client.tsx": {
-    "file": "assets/entry.client-BHJzlxyA.js",
+    "file": "assets/entry.client-BDOEMYJz.js",
     "name": "entry.client",
     "src": "src/entry.client.tsx",
     "isEntry": true,
     "imports": [
-      "_chunk-JMJ3UQ3L-DyXDjqW6.js"
+      "_chunk-JMJ3UQ3L-D74r-Uuz.js"
     ],
     "css": [
       "assets/entry-C7FgWQJj.css"
     ]
   },
   "src/root.tsx?__react-router-build-client-route": {
-    "file": "assets/root-Bj6rRzXB.js",
+    "file": "assets/root-DAZNhJxY.js",
     "name": "root",
     "src": "src/root.tsx?__react-router-build-client-route",
     "isEntry": true,
     "imports": [
-      "_chunk-JMJ3UQ3L-DyXDjqW6.js"
+      "_chunk-JMJ3UQ3L-D74r-Uuz.js"
     ]
   }
 }

@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { DropletComposer } from '../components/DropletComposer';
@@ -12,6 +13,7 @@ const API_BASE = '/api';
 const REFRESH_INTERVAL = 30000; // 30 seconds
 
 export default function Drizzle() {
+  const [searchParams] = useSearchParams();
   const [droplets, setDroplets] = useState<Droplet[]>([]);
   const [rainZone, setRainZone] = useState<GeoJSONGeometry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,10 +23,7 @@ export default function Drizzle() {
   const { latitude, longitude } = useLocation();
 
   // Check if demo mode is enabled via URL parameter
-  const isDemoMode = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('demo') === 'true';
-  }, []);
+  const isDemoMode = searchParams.get('demo') === 'true';
 
   // Load feed on mount and when location changes
   useEffect(() => {

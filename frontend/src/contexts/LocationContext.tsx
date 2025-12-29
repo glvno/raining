@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { useSearchParams } from 'react-router';
 import { useAuth } from './AuthContext';
 import { DEMO_USER_LOCATION, DEMO_FEED_DATA } from '../data/demoData';
 import type { FeedResponse } from '../types';
@@ -23,6 +24,7 @@ const LocationContext = createContext<LocationContextType | undefined>(undefined
 
 export function LocationProvider({ children }: { children: ReactNode }) {
   const { token, isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
   const [realLatitude, setRealLatitude] = useState<number | null>(null);
   const [realLongitude, setRealLongitude] = useState<number | null>(null);
   const [isRaining, setIsRaining] = useState(false);
@@ -30,11 +32,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if demo mode is enabled
-  const isDemoMode = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('demo') === 'true';
-  }, []);
+  // Check if demo mode is enabled - recomputes when URL params change
+  const isDemoMode = searchParams.get('demo') === 'true';
 
   // Use demo location if in demo mode, otherwise use real location
   const latitude = isDemoMode ? DEMO_USER_LOCATION.latitude : realLatitude;

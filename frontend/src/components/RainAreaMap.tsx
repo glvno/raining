@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import L from 'leaflet';
 import { DEMO_RADAR_TIMESTAMP } from '../data/demoData';
 import type { GeoJSONGeometry, Droplet } from '../types';
@@ -10,6 +11,7 @@ interface RainAreaMapProps {
 }
 
 export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapProps) {
+  const [searchParams] = useSearchParams();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const radarLayerRef = useRef<L.TileLayer | null>(null);
@@ -25,10 +27,7 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
   const [radarTimestamp, setRadarTimestamp] = useState<number | null>(null);
 
   // Check if demo mode is enabled
-  const isDemoMode = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('demo') === 'true';
-  }, []);
+  const isDemoMode = searchParams.get('demo') === 'true';
 
   // Set radar timestamp (demo mode uses fixed snapshot, otherwise fetch live)
   useEffect(() => {

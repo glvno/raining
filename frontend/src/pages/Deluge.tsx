@@ -1,17 +1,19 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { DropletComposer } from '../components/DropletComposer';
 import { DropletCard } from '../components/DropletCard';
 import { RainAreaIndicator } from '../components/RainAreaIndicator';
 import { GlobalMap } from '../components/GlobalMap';
-import { DEMO_FEED_DATA } from '../data/demoData';
+import { DEMO_FEED_DATA, DEMO_GLOBAL_RAIN_ZONES } from '../data/demoData';
 import type { Droplet, GeoJSONGeometry } from '../types';
 
 const API_BASE = '/api';
 const REFRESH_INTERVAL = 30000; // 30 seconds
 
 export default function Deluge() {
+  const [searchParams] = useSearchParams();
   const [droplets, setDroplets] = useState<Droplet[]>([]);
   const [rainZones, setRainZones] = useState<GeoJSONGeometry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,10 +23,7 @@ export default function Deluge() {
   const { latitude, longitude } = useLocation();
 
   // Check if demo mode is enabled via URL parameter
-  const isDemoMode = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('demo') === 'true';
-  }, []);
+  const isDemoMode = searchParams.get('demo') === 'true';
 
   // Load feed on mount and when auth changes
   useEffect(() => {
@@ -54,7 +53,7 @@ export default function Deluge() {
     // Use demo data if in demo mode
     if (isDemoMode) {
       setDroplets(DEMO_FEED_DATA.droplets);
-      setRainZones(DEMO_FEED_DATA.rain_zone ? [DEMO_FEED_DATA.rain_zone] : []);
+      setRainZones(DEMO_GLOBAL_RAIN_ZONES as GeoJSONGeometry[]);
       setError(null);
       setIsLoading(false);
       return;
@@ -112,7 +111,7 @@ export default function Deluge() {
             <div className="flex items-center gap-2">
               <span className="text-blue-800 font-semibold">🎭 Demo Mode</span>
               <span className="text-sm text-blue-600">
-                Showing ACTIVE severe weather from Jasper County, IN with real radar
+                Showing global rain activity: Indiana 🇺🇸 • Seattle 🌲 • Singapore 🌴
               </span>
             </div>
           </div>

@@ -1,27 +1,25 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { useLocation } from '../contexts/LocationContext';
 
 export function DevLocationPanel() {
   const { latitude, longitude, setManualLocation } = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [lat, setLat] = useState('');
   const [lng, setLng] = useState('');
   const [isFindingRain, setIsFindingRain] = useState(false);
 
-  // Check if demo mode is enabled
-  const isDemoMode = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('demo') === 'true';
-  }, []);
+  // Check if demo mode is enabled - recomputes when URL params change
+  const isDemoMode = searchParams.get('demo') === 'true';
 
   const toggleDemoMode = () => {
-    const url = new URL(window.location.href);
     if (isDemoMode) {
-      url.searchParams.delete('demo');
+      searchParams.delete('demo');
     } else {
-      url.searchParams.set('demo', 'true');
+      searchParams.set('demo', 'true');
     }
-    window.location.href = url.toString();
+    setSearchParams(searchParams);
   };
 
   // Update form when current location changes

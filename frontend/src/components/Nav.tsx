@@ -1,11 +1,18 @@
-import { NavLink } from "react-router"
+import { NavLink, useSearchParams } from "react-router"
 import { useAuth } from "../contexts/AuthContext"
 
 const Nav: React.FC = () => {
 	const { user, isAuthenticated, logout } = useAuth()
+	const [searchParams] = useSearchParams()
 
 	const handleLogout = async () => {
 		await logout()
+	}
+
+	// Helper to preserve query params when navigating
+	const getPathWithParams = (path: string) => {
+		const params = searchParams.toString()
+		return params ? `${path}?${params}` : path
 	}
 
 	return (
@@ -19,7 +26,7 @@ const Nav: React.FC = () => {
 				{isAuthenticated && (
 					<div className="flex gap-2">
 						<NavLink
-							to="/deluge"
+							to={getPathWithParams('/deluge')}
 							className={({ isActive }) =>
 								`px-4 py-2 rounded-full transition-colors ${
 									isActive
@@ -31,7 +38,7 @@ const Nav: React.FC = () => {
 							🌊 Deluge
 						</NavLink>
 						<NavLink
-							to="/drizzle"
+							to={getPathWithParams('/drizzle')}
 							className={({ isActive }) =>
 								`px-4 py-2 rounded-full transition-colors ${
 									isActive
