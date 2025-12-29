@@ -1,6 +1,10 @@
 defmodule RainingWeb.Schemas do
   alias OpenApiSpex.Schema
 
+  # ============================================================================
+  # Auth Schemas
+  # ============================================================================
+
   defmodule User do
     require OpenApiSpex
 
@@ -40,8 +44,120 @@ defmodule RainingWeb.Schemas do
       description: "Request schema for user registration",
       type: :object,
       properties: %{
+        user: %Schema{
+          type: :object,
+          description: "User registration data",
+          properties: %{
+            email: %Schema{type: :string, description: "Email address", format: :email},
+            password: %Schema{
+              type: :string,
+              description: "Password (optional for magic-link registration)",
+              format: :password,
+              minLength: 12,
+              maxLength: 72
+            }
+          },
+          required: [:email]
+        }
+      },
+      required: [:user],
+      example: %{
+        "user" => %{
+          "email" => "user@example.com",
+          "password" => "securepassword123"
+        }
+      }
+    })
+  end
+
+  defmodule LoginParams do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "LoginParams",
+      description: "Request schema for user login",
+      type: :object,
+      properties: %{
         email: %Schema{type: :string, description: "Email address", format: :email},
         password: %Schema{type: :string, description: "Password", format: :password}
+      },
+      required: [:email, :password],
+      example: %{
+        "email" => "user@example.com",
+        "password" => "securepassword123"
+      }
+    })
+  end
+
+  defmodule AuthResponse do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "AuthResponse",
+      description: "Response schema for successful authentication (login or registration)",
+      type: :object,
+      properties: %{
+        token: %Schema{type: :string, description: "Bearer token for API authentication"},
+        user: %Schema{
+          type: :object,
+          description: "Basic user information",
+          properties: %{
+            id: %Schema{type: :integer, description: "User ID"},
+            email: %Schema{type: :string, description: "Email address", format: :email}
+          }
+        }
+      },
+      required: [:token, :user],
+      example: %{
+        "token" => "SFMyNTY.g2gDaAJhAW4IAMCoYgD...",
+        "user" => %{
+          "id" => 123,
+          "email" => "user@example.com"
+        }
+      }
+    })
+  end
+
+  defmodule ErrorResponse do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "ErrorResponse",
+      description: "Generic error response",
+      type: :object,
+      properties: %{
+        error: %Schema{type: :string, description: "Error message"}
+      },
+      required: [:error],
+      example: %{
+        "error" => "invalid_credentials"
+      }
+    })
+  end
+
+  defmodule ValidationErrorResponse do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "ValidationErrorResponse",
+      description: "Validation error response with field-specific errors",
+      type: :object,
+      properties: %{
+        errors: %Schema{
+          type: :object,
+          description: "Map of field names to error messages",
+          additionalProperties: %Schema{
+            type: :array,
+            items: %Schema{type: :string}
+          }
+        }
+      },
+      required: [:errors],
+      example: %{
+        "errors" => %{
+          "email" => ["has already been taken"],
+          "password" => ["should be at least 12 character(s)"]
+        }
       }
     })
   end
@@ -238,6 +354,194 @@ defmodule RainingWeb.Schemas do
               [-97.2, 39.7]
             ]
           ]
+        }
+      }
+    })
+  end
+
+  defmodule GlobalFeedResponse do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "GlobalFeedResponse",
+      description: "Response schema for global droplet feed with rain zones",
+      type: :object,
+      properties: %{
+        droplets: %Schema{
+          type: :array,
+          items: Droplet,
+          description: "Array of all droplets in the feed"
+        },
+        count: %Schema{type: :integer, description: "Number of droplets in the feed"},
+        time_window_hours: %Schema{
+          type: :integer,
+          description: "Time window in hours used for the feed"
+        },
+        rain_zones: %Schema{
+          type: :array,
+          description: "Array of GeoJSON polygons representing active rain zones",
+          items: %Schema{
+            type: :object,
+            description: "GeoJSON Polygon"
+          }
+        }
+      },
+      required: [:droplets, :count, :rain_zones],
+      example: %{
+        "droplets" => [
+          %{
+            "id" => 1,
+            "content" => "It's raining here!",
+            "latitude" => 52.5,
+            "longitude" => 13.4,
+            "user" => %{"id" => 123, "email" => "joe@gmail.com"},
+            "inserted_at" => "2024-01-15T12:34:55Z",
+            "updated_at" => "2024-01-15T12:34:55Z"
+          }
+        ],
+        "count" => 1,
+        "time_window_hours" => 2,
+        "rain_zones" => [
+          %{
+            "type" => "Polygon",
+            "coordinates" => [[[-97.2, 39.7], [-97.0, 39.7], [-97.0, 39.8], [-97.2, 39.8], [-97.2, 39.7]]]
+          }
+        ]
+      }
+    })
+  end
+
+  # ============================================================================
+  # Weather Schemas
+  # ============================================================================
+
+  defmodule WeatherCheckResponse do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "WeatherCheckResponse",
+      description: "Response schema for weather rain check",
+      type: :object,
+      properties: %{
+        is_raining: %Schema{type: :boolean, description: "Whether it is currently raining"},
+        rounded_latitude: %Schema{
+          type: :number,
+          format: :float,
+          description: "Latitude rounded to weather grid precision"
+        },
+        rounded_longitude: %Schema{
+          type: :number,
+          format: :float,
+          description: "Longitude rounded to weather grid precision"
+        },
+        original_latitude: %Schema{
+          type: :number,
+          format: :float,
+          description: "Original latitude provided"
+        },
+        original_longitude: %Schema{
+          type: :number,
+          format: :float,
+          description: "Original longitude provided"
+        }
+      },
+      required: [:is_raining, :rounded_latitude, :rounded_longitude, :original_latitude, :original_longitude],
+      example: %{
+        "is_raining" => true,
+        "rounded_latitude" => 52.5,
+        "rounded_longitude" => 13.4,
+        "original_latitude" => 52.527,
+        "original_longitude" => 13.416
+      }
+    })
+  end
+
+  # ============================================================================
+  # Demo Schemas
+  # ============================================================================
+
+  defmodule DemoZone do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "DemoZone",
+      description: "A demo rain zone with metadata",
+      type: :object,
+      properties: %{
+        region: %Schema{type: :string, description: "Region name (e.g., Indiana, Seattle)"},
+        snapshot_timestamp: %Schema{
+          type: :string,
+          format: :"date-time",
+          description: "When the radar snapshot was taken"
+        },
+        rain_zone: %Schema{
+          type: :object,
+          nullable: true,
+          description: "GeoJSON Polygon representing the rain zone"
+        },
+        metadata: %Schema{
+          type: :object,
+          description: "Additional zone metadata",
+          properties: %{
+            max_precip_mm: %Schema{type: :number, format: :float, description: "Maximum precipitation in mm"},
+            point_count: %Schema{type: :integer, description: "Number of points in the zone"}
+          }
+        }
+      },
+      required: [:region, :snapshot_timestamp],
+      example: %{
+        "region" => "Indiana",
+        "snapshot_timestamp" => "2024-12-28T22:35:00Z",
+        "rain_zone" => %{
+          "type" => "Polygon",
+          "coordinates" => [[[-86.8, 39.6], [-86.6, 39.6], [-86.6, 39.8], [-86.8, 39.8], [-86.8, 39.6]]]
+        },
+        "metadata" => %{
+          "max_precip_mm" => 37.8,
+          "point_count" => 156
+        }
+      }
+    })
+  end
+
+  defmodule DemoZonesResponse do
+    require OpenApiSpex
+
+    OpenApiSpex.schema(%{
+      title: "DemoZonesResponse",
+      description: "Response schema for demo zones endpoint",
+      type: :object,
+      properties: %{
+        zones: %Schema{
+          type: :array,
+          items: DemoZone,
+          description: "Array of demo rain zones"
+        },
+        metadata: %Schema{
+          type: :object,
+          description: "Response metadata",
+          properties: %{
+            total_zones: %Schema{type: :integer, description: "Total number of zones returned"},
+            generated_at: %Schema{type: :string, format: :"date-time", description: "When the response was generated"}
+          }
+        }
+      },
+      required: [:zones, :metadata],
+      example: %{
+        "zones" => [
+          %{
+            "region" => "Indiana",
+            "snapshot_timestamp" => "2024-12-28T22:35:00Z",
+            "rain_zone" => %{
+              "type" => "Polygon",
+              "coordinates" => [[[-86.8, 39.6], [-86.6, 39.6], [-86.6, 39.8], [-86.8, 39.8], [-86.8, 39.6]]]
+            },
+            "metadata" => %{"max_precip_mm" => 37.8, "point_count" => 156}
+          }
+        ],
+        "metadata" => %{
+          "total_zones" => 1,
+          "generated_at" => "2024-12-29T10:00:00Z"
         }
       }
     })

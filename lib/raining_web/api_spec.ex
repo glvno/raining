@@ -1,5 +1,5 @@
 defmodule RainingWeb.ApiSpec do
-  alias OpenApiSpex.{Info, OpenApi, Paths, Server}
+  alias OpenApiSpex.{Components, Info, OpenApi, Paths, SecurityScheme, Server}
   alias RainingWeb.{Endpoint, Router}
   @behaviour OpenApi
 
@@ -11,8 +11,31 @@ defmodule RainingWeb.ApiSpec do
         Server.from_endpoint(Endpoint)
       ],
       info: %Info{
-        title: "Raining Api",
-        version: "0.0.1"
+        title: "Raining API",
+        version: "1.0.0",
+        description: """
+        Raining is a location-based social app that connects people during rain events.
+        Users can post "droplets" (geo-tagged messages) and see posts from others in the same rain area.
+
+        ## Authentication
+
+        Most endpoints require Bearer token authentication. Obtain a token via:
+        - `POST /api/users/register` - Create a new account
+        - `POST /api/users/login` - Log in with email/password
+
+        Include the token in requests: `Authorization: Bearer <token>`
+        """
+      },
+      # Security scheme definition
+      components: %Components{
+        securitySchemes: %{
+          "authorization" => %SecurityScheme{
+            type: "http",
+            scheme: "bearer",
+            bearerFormat: "JWT",
+            description: "Bearer token obtained from login or registration"
+          }
+        }
       },
       # Populate the paths from a phoenix router
       paths: Paths.from_router(Router)

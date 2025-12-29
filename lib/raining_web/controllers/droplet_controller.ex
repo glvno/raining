@@ -4,7 +4,7 @@ defmodule RainingWeb.DropletController do
 
   alias Raining.Droplets
   alias Raining.Droplets.Droplet
-  alias RainingWeb.Schemas.{DropletParams, DropletResponse, DropletsResponse}
+  alias RainingWeb.Schemas.{DropletParams, DropletResponse, DropletsResponse, GlobalFeedResponse}
 
   tags ["Droplets"]
 
@@ -175,6 +175,7 @@ defmodule RainingWeb.DropletController do
 
   operation :global_feed,
     summary: "Get global feed of all droplets with active rain zones",
+    description: "Returns all non-expired droplets globally along with all active rain zone polygons for map visualization.",
     parameters: [
       time_window_hours: [
         in: :query,
@@ -185,7 +186,7 @@ defmodule RainingWeb.DropletController do
       ]
     ],
     responses: [
-      ok: {"Global feed with rain zones", "application/json", DropletsResponse}
+      ok: {"Global feed with rain zones", "application/json", GlobalFeedResponse}
     ],
     security: [%{"authorization" => []}]
 

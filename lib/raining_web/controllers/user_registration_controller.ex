@@ -1,19 +1,22 @@
 defmodule RainingWeb.UserRegistrationController do
   use RainingWeb, :controller
-  alias Raining.Accounts
-  alias RainingWeb.Schemas.{UserRegistrationParams, UserResponse}
-
   use OpenApiSpex.ControllerSpecs
 
+  alias Raining.Accounts
+  alias RainingWeb.Schemas.{UserRegistrationParams, AuthResponse, ValidationErrorResponse}
+
+  tags ["Authentication"]
+
   operation :create,
-    summary: "Create user",
-    parameters: [
-      email: [in: :body, description: "User email", type: :string, example: "test@example.com"],
-      password: [in: :body, description: "User password", type: :string, example: "password"]
-    ],
-    request_body: {"User params", "application/json", UserRegistrationParams},
+    summary: "Register user",
+    description: """
+    Creates a new user account and returns a Bearer token for immediate authentication.
+    Password is optional - users can register with just an email for magic-link authentication.
+    """,
+    request_body: {"User registration params", "application/json", UserRegistrationParams, required: true},
     responses: [
-      ok: {"User response", "application/json", UserResponse}
+      created: {"Registration successful", "application/json", AuthResponse},
+      unprocessable_entity: {"Validation errors", "application/json", ValidationErrorResponse}
     ]
 
   def create(conn, %{"user" => user_params}) do

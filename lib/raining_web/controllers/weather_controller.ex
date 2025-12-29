@@ -1,6 +1,37 @@
 defmodule RainingWeb.WeatherController do
   use RainingWeb, :controller
+  use OpenApiSpex.ControllerSpecs
+
   alias Raining.Weather
+  alias RainingWeb.Schemas.{WeatherCheckResponse, ErrorResponse}
+
+  tags ["Weather"]
+
+  operation :check,
+    summary: "Check rain status",
+    description: "Checks if it's currently raining at the given coordinates. Requires Bearer token authentication.",
+    parameters: [
+      latitude: [
+        in: :query,
+        description: "Latitude coordinate",
+        type: :number,
+        required: true,
+        example: 52.527
+      ],
+      longitude: [
+        in: :query,
+        description: "Longitude coordinate",
+        type: :number,
+        required: true,
+        example: 13.416
+      ]
+    ],
+    responses: [
+      ok: {"Weather check result", "application/json", WeatherCheckResponse},
+      bad_request: {"Invalid coordinates", "application/json", ErrorResponse},
+      service_unavailable: {"Weather service unavailable", "application/json", ErrorResponse}
+    ],
+    security: [%{"authorization" => []}]
 
   @doc """
   Checks if it's raining at the given coordinates.

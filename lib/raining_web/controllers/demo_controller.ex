@@ -1,52 +1,36 @@
 defmodule RainingWeb.DemoController do
   use RainingWeb, :controller
+  use OpenApiSpex.ControllerSpecs
 
   alias Raining.Demo
+  alias RainingWeb.Schemas.DemoZonesResponse
+
+  tags ["Demo"]
+
+  operation :zones,
+    summary: "Get demo rain zones",
+    description: """
+    Returns demo rain zones generated from stored radar snapshots.
+    This endpoint is public and does not require authentication.
+    Useful for testing and demonstration purposes.
+    """,
+    parameters: [
+      regions: [
+        in: :query,
+        description: "Comma-separated list of region names (e.g., 'Indiana,Seattle,Singapore'). Defaults to all regions.",
+        type: :string,
+        required: false,
+        example: "Indiana,Seattle"
+      ]
+    ],
+    responses: [
+      ok: {"Demo zones", "application/json", DemoZonesResponse}
+    ]
 
   @doc """
   GET /api/demo/zones
 
   Returns demo rain zones generated from stored radar snapshots.
-
-  ## Query Parameters
-
-    - `regions` (optional) - Comma-separated list of region names to fetch
-                             (e.g., "Indiana,Seattle,Singapore")
-                             Defaults to all available regions.
-
-  ## Response
-
-  Returns JSON with the following structure:
-
-      {
-        "zones": [
-          {
-            "region": "Indiana",
-            "snapshot_timestamp": "2024-12-28T22:35:00Z",
-            "rain_zone": {
-              "type": "Polygon",
-              "coordinates": [[[-86.8, 39.6], ...]]
-            },
-            "metadata": {
-              "max_precip_mm": 37.8,
-              "point_count": 156
-            }
-          },
-          ...
-        ],
-        "metadata": {
-          "total_zones": 3,
-          "generated_at": "2024-12-29T..."
-        }
-      }
-
-  ## Examples
-
-      # Get all demo zones
-      GET /api/demo/zones
-
-      # Get specific regions
-      GET /api/demo/zones?regions=Indiana,Seattle
   """
   def zones(conn, params) do
     regions = parse_regions(params["regions"])
