@@ -234,7 +234,7 @@ defmodule Raining.Droplets do
 
   defp get_feed_with_radar_check(latitude, longitude, time_window_hours) do
     # Calculate search bounding box (2 degree radius ~ 220km)
-    bounds = calculate_search_bounds(latitude, longitude, radius: 2.0)
+    bounds = calculate_search_bounds(latitude, longitude, radius: 1.0)
 
     # Fetch current RainViewer radar timestamp
     case fetch_radar_timestamp() do
@@ -246,7 +246,7 @@ defmodule Raining.Droplets do
                elem(bounds, 2),
                elem(bounds, 3),
                grid_step: 0.1,
-               zoom: 8,
+               zoom: 9,
                timestamp: timestamp
              ) do
           {:ok, precip_data} ->

@@ -14,6 +14,28 @@ function LocationPickerMap({ currentLat, currentLng, onLocationClick }: Location
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
+  const radarLayerRef = useRef<L.TileLayer | null>(null);
+  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(null);
+
+  // Fetch radar timestamp for precipitation overlay
+  useEffect(() => {
+    const fetchRadarTimestamp = async () => {
+      try {
+        const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        const data = await response.json();
+        if (data.radar && data.radar.past && data.radar.past.length > 0) {
+          const latest = data.radar.past[data.radar.past.length - 1];
+          setRadarTimestamp(latest.time);
+        }
+      } catch (error) {
+        console.error('Failed to fetch radar timestamp:', error);
+      }
+    };
+
+    fetchRadarTimestamp();
+    const interval = setInterval(fetchRadarTimestamp, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Initialize map on mount
   useEffect(() => {
@@ -45,6 +67,34 @@ function LocationPickerMap({ currentLat, currentLng, onLocationClick }: Location
       mapRef.current = null;
     };
   }, []);
+
+  // Add/update radar layer when timestamp changes
+  useEffect(() => {
+    if (!mapRef.current || !radarTimestamp) return;
+
+    const map = mapRef.current;
+
+    if (radarLayerRef.current) {
+      map.removeLayer(radarLayerRef.current);
+    }
+
+    const radarLayer = L.tileLayer(
+      `https://tilecache.rainviewer.com/v2/radar/${radarTimestamp}/256/{z}/{x}/{y}/6/1_1.png`,
+      {
+        opacity: 0.6,
+        zIndex: 500,
+      }
+    ).addTo(map);
+
+    radarLayerRef.current = radarLayer;
+
+    return () => {
+      if (radarLayerRef.current) {
+        map.removeLayer(radarLayerRef.current);
+        radarLayerRef.current = null;
+      }
+    };
+  }, [radarTimestamp]);
 
   // Update marker when location changes
   useEffect(() => {
