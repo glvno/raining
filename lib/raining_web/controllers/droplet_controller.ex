@@ -173,6 +173,53 @@ defmodule RainingWeb.DropletController do
     end
   end
 
+  operation :global_feed,
+    summary: "Get global feed of all droplets with active rain zones",
+    parameters: [
+      time_window_hours: [
+        in: :query,
+        description: "Hours to look back (default: 2)",
+        type: :integer,
+        required: false,
+        example: 2
+      ]
+    ],
+    responses: [
+      ok: {"Global feed with rain zones", "application/json", DropletsResponse}
+    ],
+    security: [%{"authorization" => []}]
+
+  @doc """
+  Returns the global feed of all non-expired droplets and active rain zones.
+
+  Optional query parameters:
+  - time_window_hours: Hours to look back (default: from config)
+
+  Returns 200 OK with droplets array and rain_zones array.
+  """
+  def global_feed(conn, params) do
+    opts = build_feed_opts(params)
+
+    case Droplets.get_global_feed(opts) do
+      {:ok, droplets, rain_zones} ->
+        json(conn, %{
+          droplets: Enum.map(droplets, &format_droplet/1),
+          count: length(droplets),
+          time_window_hours:
+            Keyword.get(opts, :time_window_hours, Droplets.get_time_window_hours()),
+          rain_zones:
+            Enum.map(rain_zones, fn %{polygon: polygon} ->
+              # Convert PostGIS geometry to GeoJSON
+              case Geo.JSON.encode(polygon) do
+                {:ok, geojson} -> geojson
+                {:error, _} -> nil
+              end
+            end)
+            |> Enum.reject(&is_nil/1)
+        })
+    end
+  end
+
   # Private helper functions
 
   defp parse_float(nil), do: {:error, :missing}

@@ -80,8 +80,10 @@ defmodule Raining.WeatherTest do
 
       case result do
         {:error, :no_rain} -> assert true
-        {:ok, _coords} -> assert true  # OK if it happens to be raining
-        {:error, _} -> assert true  # OK if API error
+        # OK if it happens to be raining
+        {:ok, _coords} -> assert true
+        # OK if API error
+        {:error, _} -> assert true
       end
     end
 
@@ -104,10 +106,12 @@ defmodule Raining.WeatherTest do
                  end)
 
         {:error, :no_rain} ->
-          assert true  # OK if not raining
+          # OK if not raining
+          assert true
 
         {:error, _reason} ->
-          assert true  # OK if API error
+          # OK if API error
+          assert true
       end
     end
 
@@ -136,10 +140,12 @@ defmodule Raining.WeatherTest do
           assert {rounded_lat, rounded_lng} in coords
 
         {:error, :no_rain} ->
-          assert true  # OK if not raining
+          # OK if not raining
+          assert true
 
         {:error, _} ->
-          assert true  # OK if API error
+          # OK if API error
+          assert true
       end
     end
 

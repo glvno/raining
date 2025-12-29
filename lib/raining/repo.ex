@@ -4,7 +4,8 @@ defmodule Raining.Repo do
     adapter: Ecto.Adapters.Postgres
 
   # Define PostGIS types for Ecto
-  Postgrex.Types.define(Raining.PostgresTypes,
+  Postgrex.Types.define(
+    Raining.PostgresTypes,
     [Geo.PostGIS.Extension] ++ Ecto.Adapters.Postgres.extensions(),
     json: Jason
   )

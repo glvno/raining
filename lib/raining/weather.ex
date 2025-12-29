@@ -119,7 +119,8 @@ defmodule Raining.Weather do
 
   """
   @spec get_precipitation_grid(number(), number(), number(), number(), keyword()) ::
-          {:ok, %{points: [{float(), float(), float()}], bounds: {float(), float(), float(), float()}}}
+          {:ok,
+           %{points: [{float(), float(), float()}], bounds: {float(), float(), float(), float()}}}
           | {:error, :no_precipitation | term()}
   def get_precipitation_grid(min_lat, max_lat, min_lng, max_lng, opts \\ []) do
     grid_step = Keyword.get(opts, :grid_step, 0.5)

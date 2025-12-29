@@ -29,7 +29,17 @@ defmodule Raining.Droplets.RainStatusCache do
   """
   def changeset(cache, attrs) do
     cache
-    |> cast(attrs, [:zone_id, :zone_name, :geometry, :last_checked, :latitude, :longitude, :is_raining, :rain_coords, :expires_at])
+    |> cast(attrs, [
+      :zone_id,
+      :zone_name,
+      :geometry,
+      :last_checked,
+      :latitude,
+      :longitude,
+      :is_raining,
+      :rain_coords,
+      :expires_at
+    ])
     |> validate_required([:is_raining, :expires_at])
     |> unique_constraint(:zone_id)
   end
@@ -46,10 +56,10 @@ defmodule Raining.Droplets.RainStatusCache do
     from c in __MODULE__,
       where:
         c.latitude >= ^(latitude - tolerance) and
-        c.latitude <= ^(latitude + tolerance) and
-        c.longitude >= ^(longitude - tolerance) and
-        c.longitude <= ^(longitude + tolerance) and
-        c.expires_at > ^now,
+          c.latitude <= ^(latitude + tolerance) and
+          c.longitude >= ^(longitude - tolerance) and
+          c.longitude <= ^(longitude + tolerance) and
+          c.expires_at > ^now,
       order_by: [desc: c.inserted_at],
       limit: 1
   end

@@ -121,6 +121,54 @@ defmodule Raining.Droplets do
   end
 
   @doc """
+  Returns all non-expired droplets globally in chronological order
+  along with all active rain zones for map visualization.
+
+  This function provides the global feed with:
+  - All droplets within the time window (no spatial filtering)
+  - All active rain zones from the cache for map display
+
+  ## Parameters
+
+    - `opts`: Keyword list of options
+      - `:time_window_hours` - Hours to look back (default: from config)
+
+  ## Returns
+
+    - `{:ok, droplets, rain_zones}` - List of droplets and list of rain zone polygons
+
+  ## Examples
+
+      iex> get_global_feed()
+      {:ok, [%Droplet{}, ...], [%{polygon: %Geo.Polygon{}}, ...]}
+
+      iex> get_global_feed(time_window_hours: 1)
+      {:ok, [%Droplet{}, ...], [%{polygon: %Geo.Polygon{}}, ...]}
+
+  """
+  def get_global_feed(opts \\ []) do
+    time_window_hours = Keyword.get(opts, :time_window_hours, get_time_window_hours())
+    cutoff_time = DateTime.utc_now() |> DateTime.add(-time_window_hours, :hour)
+
+    # Get all non-expired droplets
+    droplets =
+      Droplet
+      |> where([d], d.inserted_at >= ^cutoff_time)
+      |> order_by([d], desc: d.inserted_at)
+      |> Repo.all()
+      |> Repo.preload(:user)
+
+    # Get all active rain zones from cache
+    rain_zones =
+      RainStatusCache
+      |> where([r], r.is_raining == true and r.expires_at > ^DateTime.utc_now())
+      |> select([r], %{polygon: r.geometry})
+      |> Repo.all()
+
+    {:ok, droplets, rain_zones}
+  end
+
+  @doc """
   Converts zone geometry to GeoJSON format for API responses.
 
   Handles two cases:
@@ -169,13 +217,16 @@ defmodule Raining.Droplets do
     # Create GeoJSON polygon (lng, lat order per GeoJSON spec)
     %{
       "type" => "Polygon",
-      "coordinates" => [[
-        [min_lng, min_lat],
-        [max_lng, min_lat],
-        [max_lng, max_lat],
-        [min_lng, max_lat],
-        [min_lng, min_lat]  # Close the ring
-      ]]
+      "coordinates" => [
+        [
+          [min_lng, min_lat],
+          [max_lng, min_lat],
+          [max_lng, max_lat],
+          [min_lng, max_lat],
+          # Close the ring
+          [min_lng, min_lat]
+        ]
+      ]
     }
   end
 
@@ -186,7 +237,12 @@ defmodule Raining.Droplets do
     bounds = calculate_search_bounds(latitude, longitude, radius: 2.0)
 
     # Fetch precipitation grid from Open-Meteo
-    case Weather.get_precipitation_grid(elem(bounds, 0), elem(bounds, 1), elem(bounds, 2), elem(bounds, 3)) do
+    case Weather.get_precipitation_grid(
+           elem(bounds, 0),
+           elem(bounds, 1),
+           elem(bounds, 2),
+           elem(bounds, 3)
+         ) do
       {:ok, precip_data} ->
         # Generate contour polygon from precipitation data
         case Weather.ContourGenerator.generate_polygon(precip_data, latitude, longitude) do
@@ -225,8 +281,12 @@ defmodule Raining.Droplets do
 
     # Generate zone_id from bounds and timestamp
     unix_timestamp = DateTime.to_unix(now)
-    zone_id = "radar_#{Float.round(min_lat, 1)}-#{Float.round(max_lat, 1)}_#{Float.round(min_lng, 1)}-#{Float.round(max_lng, 1)}_#{unix_timestamp}"
-    zone_name = "Radar Precipitation Area (#{Float.round(min_lat, 1)}°, #{Float.round(min_lng, 1)}°)"
+
+    zone_id =
+      "radar_#{Float.round(min_lat, 1)}-#{Float.round(max_lat, 1)}_#{Float.round(min_lng, 1)}-#{Float.round(max_lng, 1)}_#{unix_timestamp}"
+
+    zone_name =
+      "Radar Precipitation Area (#{Float.round(min_lat, 1)}°, #{Float.round(min_lng, 1)}°)"
 
     attrs = %{
       zone_id: zone_id,
@@ -277,20 +337,25 @@ defmodule Raining.Droplets do
 
     # Find any non-expired cache entry where the point is inside the geometry
     # Use ST_SetSRID to ensure geometry has correct SRID for comparison
-    query = from c in RainStatusCache,
-      where: c.is_raining == true and c.expires_at > ^DateTime.utc_now(),
-      where: fragment("ST_Contains(ST_SetSRID(?, 4326), ?)", c.geometry, ^point),
-      limit: 1
+    query =
+      from c in RainStatusCache,
+        where: c.is_raining == true and c.expires_at > ^DateTime.utc_now(),
+        where: fragment("ST_Contains(ST_SetSRID(?, 4326), ?)", c.geometry, ^point),
+        limit: 1
 
     case Repo.one(query) do
-      nil -> {:error, :cache_miss}
+      nil ->
+        {:error, :cache_miss}
+
       cache_entry ->
         # Ensure returned geometry has SRID set
-        geometry = if cache_entry.geometry.srid == nil or cache_entry.geometry.srid == 0 do
-          %{cache_entry.geometry | srid: 4326}
-        else
-          cache_entry.geometry
-        end
+        geometry =
+          if cache_entry.geometry.srid == nil or cache_entry.geometry.srid == 0 do
+            %{cache_entry.geometry | srid: 4326}
+          else
+            cache_entry.geometry
+          end
+
         {:ok, geometry}
     end
   end
@@ -299,18 +364,26 @@ defmodule Raining.Droplets do
     cutoff_time = DateTime.utc_now() |> DateTime.add(-time_window_hours, :hour)
 
     # Ensure zone_geometry has SRID 4326
-    zone_geom = if zone_geometry.srid == nil or zone_geometry.srid == 0 do
-      %{zone_geometry | srid: 4326}
-    else
-      zone_geometry
-    end
+    zone_geom =
+      if zone_geometry.srid == nil or zone_geometry.srid == 0 do
+        %{zone_geometry | srid: 4326}
+      else
+        zone_geometry
+      end
 
     # Get all droplets in time window that fall within the zone geometry
     # Use ST_MakePoint with SRID 4326 to ensure consistent coordinate system
-    query = from d in Droplet,
-      where: d.inserted_at >= ^cutoff_time,
-      where: fragment("ST_Contains(?, ST_SetSRID(ST_MakePoint(?, ?), 4326))", ^zone_geom, d.longitude, d.latitude),
-      order_by: [desc: d.inserted_at]
+    query =
+      from d in Droplet,
+        where: d.inserted_at >= ^cutoff_time,
+        where:
+          fragment(
+            "ST_Contains(?, ST_SetSRID(ST_MakePoint(?, ?), 4326))",
+            ^zone_geom,
+            d.longitude,
+            d.latitude
+          ),
+        order_by: [desc: d.inserted_at]
 
     droplets = Repo.all(query) |> Repo.preload(:user)
     {:ok, droplets, zone_geom}
@@ -411,17 +484,26 @@ defmodule Raining.Droplets do
     rounded_lat = Weather.round_coordinate(latitude)
     rounded_lng = Weather.round_coordinate(longitude)
 
-    Logger.debug("Cache lookup: original (#{latitude}, #{longitude}) -> rounded (#{rounded_lat}, #{rounded_lng})")
+    Logger.debug(
+      "Cache lookup: original (#{latitude}, #{longitude}) -> rounded (#{rounded_lat}, #{rounded_lng})"
+    )
 
     case RainStatusCache.get_valid_cache_query(rounded_lat, rounded_lng) |> Repo.one() do
       nil ->
-        Logger.debug("Cache query for rounded (#{rounded_lat}, #{rounded_lng}) returned no results")
+        Logger.debug(
+          "Cache query for rounded (#{rounded_lat}, #{rounded_lng}) returned no results"
+        )
+
         {:error, :cache_miss}
 
       cache_entry ->
         # Convert stored map back to list of tuples
         rain_coords = decode_rain_coords(cache_entry.rain_coords)
-        Logger.debug("Cache HIT: Found entry at (#{cache_entry.latitude}, #{cache_entry.longitude})")
+
+        Logger.debug(
+          "Cache HIT: Found entry at (#{cache_entry.latitude}, #{cache_entry.longitude})"
+        )
+
         {:ok, cache_entry.is_raining, rain_coords}
     end
   end

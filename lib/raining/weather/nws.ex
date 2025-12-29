@@ -35,14 +35,15 @@ defmodule Raining.Weather.NWS do
 
     case Req.get(url, headers: [{"User-Agent", "RainingApp"}]) do
       {:ok, %{status: 200, body: body}} ->
-        {:ok, %{
-          zone_id: extract_zone_id(body),
-          zone_url: body["properties"]["forecastZone"],
-          stations_url: body["properties"]["observationStations"],
-          grid_id: body["properties"]["gridId"],
-          grid_x: body["properties"]["gridX"],
-          grid_y: body["properties"]["gridY"]
-        }}
+        {:ok,
+         %{
+           zone_id: extract_zone_id(body),
+           zone_url: body["properties"]["forecastZone"],
+           stations_url: body["properties"]["observationStations"],
+           grid_id: body["properties"]["gridId"],
+           grid_x: body["properties"]["gridX"],
+           grid_y: body["properties"]["gridY"]
+         }}
 
       {:ok, %{status: 404}} ->
         {:error, :outside_us}
@@ -72,9 +73,12 @@ defmodule Raining.Weather.NWS do
   def get_stations(stations_url) do
     case Req.get(stations_url, headers: [{"User-Agent", "RainingApp"}]) do
       {:ok, %{status: 200, body: body}} ->
-        stations = body["features"]
-          |> Enum.take(10)  # Limit to closest 10 stations
+        stations =
+          body["features"]
+          # Limit to closest 10 stations
+          |> Enum.take(10)
           |> Enum.map(&parse_station/1)
+
         {:ok, stations}
 
       {:ok, %{status: status}} ->
@@ -101,9 +105,10 @@ defmodule Raining.Weather.NWS do
     # Check stations in parallel using Task.async_stream
     stations
     |> Task.async_stream(&check_station_precipitation/1,
-                          max_concurrency: 5,
-                          timeout: 10_000,
-                          on_timeout: :kill_task)
+      max_concurrency: 5,
+      timeout: 10_000,
+      on_timeout: :kill_task
+    )
     |> Enum.any?(fn
       {:ok, true} -> true
       _ -> false
@@ -125,11 +130,12 @@ defmodule Raining.Weather.NWS do
   def get_zone_geometry(zone_url) do
     case Req.get(zone_url, headers: [{"User-Agent", "RainingApp"}]) do
       {:ok, %{status: 200, body: body}} ->
-        {:ok, %{
-          zone_id: extract_zone_id_from_url(zone_url),
-          zone_name: body["properties"]["name"],
-          geometry: body["geometry"]
-        }}
+        {:ok,
+         %{
+           zone_id: extract_zone_id_from_url(zone_url),
+           zone_name: body["properties"]["name"],
+           geometry: body["geometry"]
+         }}
 
       {:ok, %{status: status}} ->
         {:error, {:http_error, status}}
@@ -152,7 +158,8 @@ defmodule Raining.Weather.NWS do
         # Rain if any precipitation in last 3 hours
         (precip_1h && precip_1h > 0) || (precip_3h && precip_3h > 0)
 
-      _ -> false
+      _ ->
+        false
     end
   end
 

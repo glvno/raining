@@ -10,10 +10,41 @@ const Nav: React.FC = () => {
 
 	return (
 		<nav className="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
-			<NavLink to="/" className="flex items-center gap-2 text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-				<span>🌧️</span>
-				<span>Raining</span>
-			</NavLink>
+			<div className="flex items-center gap-8">
+				<NavLink to="/" className="flex items-center gap-2 text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
+					<span>🌧️</span>
+					<span>Raining</span>
+				</NavLink>
+
+				{isAuthenticated && (
+					<div className="flex gap-2">
+						<NavLink
+							to="/deluge"
+							className={({ isActive }) =>
+								`px-4 py-2 rounded-full transition-colors ${
+									isActive
+										? 'bg-blue-500 text-white'
+										: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+								}`
+							}
+						>
+							🌊 Deluge
+						</NavLink>
+						<NavLink
+							to="/drizzle"
+							className={({ isActive }) =>
+								`px-4 py-2 rounded-full transition-colors ${
+									isActive
+										? 'bg-blue-500 text-white'
+										: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+								}`
+							}
+						>
+							💧 Drizzle
+						</NavLink>
+					</div>
+				)}
+			</div>
 
 			<div className="flex gap-4 items-center">
 				{isAuthenticated ? (

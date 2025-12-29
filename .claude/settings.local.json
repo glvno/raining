@@ -22,7 +22,8 @@
       "Bash(curl:*)",
       "WebFetch(domain:www.rainviewer.com)",
       "Bash(mix phx.server:*)",
-      "Bash(mix run:*)"
+      "Bash(mix run:*)",
+      "Bash(npm search:*)"
     ]
   }
 }

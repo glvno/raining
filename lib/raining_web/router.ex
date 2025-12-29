@@ -41,6 +41,7 @@ defmodule RainingWeb.Router do
     # Droplet endpoints
     post "/droplets", DropletController, :create
     get "/droplets/feed", DropletController, :feed
+    get "/droplets/global-feed", DropletController, :global_feed
     get "/droplets/:id", DropletController, :show
 
     # Weather endpoints

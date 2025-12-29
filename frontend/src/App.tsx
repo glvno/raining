@@ -2,6 +2,8 @@ import React from 'react'
 import Auth from './pages/Auth'
 import { Route, Routes } from 'react-router'
 import Home from './pages/Home'
+import Deluge from './pages/Deluge'
+import Drizzle from './pages/Drizzle'
 import { AuthProvider } from './contexts/AuthContext'
 import { LocationProvider } from './contexts/LocationContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -17,11 +19,33 @@ const App: React.FC = () => {
           <div className="flex-1">
             <Routes>
               <Route path="/login" element={<Auth />} />
-              <Route path="/" element={
-                <ProtectedRoute>
-                  <Home />
-                </ProtectedRoute>
-              } />
+
+              <Route
+                path="/deluge"
+                element={
+                  <ProtectedRoute>
+                    <Deluge />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/drizzle"
+                element={
+                  <ProtectedRoute>
+                    <Drizzle />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </div>
           <DevLocationPanel />
