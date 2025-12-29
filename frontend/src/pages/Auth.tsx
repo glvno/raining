@@ -32,7 +32,7 @@ const Auth: React.FC = () => {
 				await register(email, password)
 				// Will redirect via useEffect
 			}
-		} catch (err) {
+		} catch {
 			// Error is already set in AuthContext
 		} finally {
 			setIsSubmitting(false)

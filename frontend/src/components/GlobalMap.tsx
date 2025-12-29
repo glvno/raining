@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import L from 'leaflet';
 import 'leaflet.markercluster';
@@ -25,15 +25,20 @@ export function GlobalMap({ rainZones, userLocation, droplets }: GlobalMapProps)
     userMarker: null,
     markerClusterGroup: null,
   });
-  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(null);
 
   // Check if demo mode is enabled
   const isDemoMode = searchParams.get('demo') === 'true';
 
-  // Set radar timestamp (demo mode uses fixed snapshot, otherwise fetch live)
+  // Initialize radar timestamp (demo mode uses fixed snapshot)
+  const initialTimestamp = useMemo(
+    () => (isDemoMode ? DEMO_RADAR_TIMESTAMP : null),
+    [isDemoMode]
+  );
+  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(initialTimestamp);
+
+  // Fetch live radar timestamp (skip in demo mode)
   useEffect(() => {
     if (isDemoMode) {
-      setRadarTimestamp(DEMO_RADAR_TIMESTAMP);
       return;
     }
 
@@ -179,7 +184,7 @@ export function GlobalMap({ rainZones, userLocation, droplets }: GlobalMapProps)
 
     // Add all rain zone polygons
     rainZones.forEach((zone) => {
-      const zoneLayer = L.geoJSON(zone as any, {
+      const zoneLayer = L.geoJSON(zone as GeoJSON.Geometry, {
         style: {
           color: '#3b82f6',
           weight: 2,

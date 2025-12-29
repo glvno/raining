@@ -74,7 +74,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     } else {
       setIsLoading(false);
     }
-  }, [isDemoMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemoMode]); // Only check on mode change, not when location updates
 
   // Check rain status when location or auth changes (skip in demo mode)
   useEffect(() => {
@@ -83,7 +84,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     if (latitude && longitude && isAuthenticated && token) {
       checkRainStatus();
     }
-  }, [latitude, longitude, isAuthenticated, token, isDemoMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latitude, longitude, isAuthenticated, token, isDemoMode]); // checkRainStatus is stable
 
   // Auto-refresh rain status every 30 seconds (skip in demo mode)
   useEffect(() => {
@@ -98,7 +100,8 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }, REFRESH_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [latitude, longitude, isAuthenticated, token, isDemoMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latitude, longitude, isAuthenticated, token, isDemoMode]); // checkRainStatus is stable
 
   const requestGeolocation = () => {
     setIsLoading(true);
@@ -204,6 +207,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useLocation() {
   const context = useContext(LocationContext);
   if (context === undefined) {

@@ -37,7 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setIsLoading(false);
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally only run on mount
 
   const checkAuth = async (tokenToCheck?: string) => {
     const authToken = tokenToCheck || token;
@@ -65,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         localStorage.removeItem(TOKEN_KEY);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to verify authentication');
       setToken(null);
       setUser(null);
@@ -178,6 +179,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

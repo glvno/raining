@@ -22,7 +22,7 @@ defmodule RainingWeb.Schemas do
           format: :"date-time"
         }
       },
-      required: [:name, :email],
+      required: [:email],
       example: %{
         "id" => 123,
         "email" => "joe@gmail.com",
@@ -41,7 +41,7 @@ defmodule RainingWeb.Schemas do
       type: :object,
       properties: %{
         email: %Schema{type: :string, description: "Email address", format: :email},
-        password: %Schema{type: :string, description: "Password", format: :email}
+        password: %Schema{type: :string, description: "Password", format: :password}
       }
     })
   end

@@ -66,7 +66,8 @@ function LocationPickerMap({ currentLat, currentLng, onLocationClick }: Location
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally only run on mount
 
   // Add/update radar layer when timestamp changes
   useEffect(() => {
@@ -143,7 +144,7 @@ export function DevLocationPanel() {
     setSearchParams(searchParams);
   };
 
-  // Update form when current location changes
+  // Update form when current location changes (only if form is empty)
   useEffect(() => {
     if (latitude !== null && lat === '') {
       setLat(latitude.toString());
@@ -151,7 +152,8 @@ export function DevLocationPanel() {
     if (longitude !== null && lng === '') {
       setLng(longitude.toString());
     }
-  }, [latitude, longitude]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latitude, longitude]); // Intentionally exclude lat/lng to only set initial values
 
   // Only show in development
   if (!import.meta.env.DEV) {

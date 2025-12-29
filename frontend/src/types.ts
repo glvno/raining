@@ -15,9 +15,10 @@ export interface Droplet {
   updated_at: string;
 }
 
+// GeoJSON geometry type compatible with Leaflet
 export interface GeoJSONGeometry {
-  type: string;
-  coordinates: number[][][];
+  type: 'Polygon' | 'MultiPolygon';
+  coordinates: number[][][] | number[][][][];
 }
 
 export interface FeedResponse {

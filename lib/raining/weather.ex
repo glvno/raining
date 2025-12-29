@@ -215,14 +215,14 @@ defmodule Raining.Weather do
         rain_area = [starting_coord]
 
         # Log starting point
-        IO.puts("Starting BFS search from coordinate:")
-        IO.inspect(starting_coord)
+        require Logger
+        Logger.debug("Starting BFS search from coordinate: #{inspect(starting_coord)}")
 
         # Start BFS expansion
         result = bfs_expand([starting_coord], visited, rain_area)
 
         # Log completion
-        IO.puts("BFS search complete. Total rain area: #{length(result)} coordinate(s)")
+        Logger.debug("BFS search complete. Total rain area: #{length(result)} coordinate(s)")
 
         {:ok, result}
 
@@ -275,8 +275,8 @@ defmodule Raining.Weather do
 
       # Log coordinates being added to rain area
       if not Enum.empty?(raining_coords) do
-        IO.puts("Adding #{length(raining_coords)} coordinate(s) to rain area:")
-        IO.inspect(raining_coords)
+        require Logger
+        Logger.debug("Adding #{length(raining_coords)} coordinate(s) to rain area: #{inspect(raining_coords)}")
       end
 
       # Update visited set with all new coordinates (not just raining ones)

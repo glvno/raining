@@ -144,7 +144,8 @@ defmodule Raining.Accounts do
 
   """
   def change_user_password(user, attrs \\ %{}, opts \\ []) do
-    User.password_changeset(user, attrs, opts)
+    # Password is required when explicitly changing password
+    User.password_changeset(user, attrs, Keyword.put(opts, :require_password, true))
   end
 
   @doc """
@@ -163,7 +164,7 @@ defmodule Raining.Accounts do
   """
   def update_user_password(user, attrs) do
     user
-    |> User.password_changeset(attrs)
+    |> User.password_changeset(attrs, require_password: true)
     |> update_user_and_delete_all_tokens()
   end
 
@@ -278,8 +279,11 @@ defmodule Raining.Accounts do
   @doc """
   Deletes the signed token with the given context.
   """
-  def delete_user_session_token(token) do
-    Repo.delete_all(from(UserToken, where: [token: ^token, context: "session"]))
+  def delete_user_session_token(encoded_token) do
+    with {:ok, token} <- Base.url_decode64(encoded_token, padding: false) do
+      Repo.delete_all(from(UserToken, where: [token: ^token, context: "session"]))
+    end
+
     :ok
   end
 

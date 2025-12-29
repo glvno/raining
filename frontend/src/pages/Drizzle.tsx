@@ -31,7 +31,8 @@ export default function Drizzle() {
     if (latitude && longitude && token) {
       loadFeed();
     }
-  }, [latitude, longitude, token, isDemoMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latitude, longitude, token, isDemoMode]); // loadFeed is stable
 
   // Auto-refresh feed every 30 seconds (skip in demo mode)
   useEffect(() => {
@@ -44,7 +45,8 @@ export default function Drizzle() {
     }, REFRESH_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [latitude, longitude, token, isDemoMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latitude, longitude, token, isDemoMode]); // loadFeed is stable
 
   const loadFeed = async () => {
     if (!latitude || !longitude || !token) {

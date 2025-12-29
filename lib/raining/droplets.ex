@@ -347,32 +347,6 @@ defmodule Raining.Droplets do
     Logger.info("Cached radar zone: #{zone_id} (expires in 15 minutes)")
   end
 
-  defp cache_raining_zone(zone_data) do
-    now = DateTime.utc_now() |> DateTime.truncate(:second)
-    expires_at = DateTime.add(now, 1, :hour)
-
-    {:ok, geometry} = Geo.JSON.decode(zone_data.geometry)
-
-    # Ensure geometry has SRID 4326 (WGS84)
-    geometry_with_srid = %{geometry | srid: 4326}
-
-    attrs = %{
-      zone_id: zone_data.zone_id,
-      zone_name: zone_data.zone_name,
-      geometry: geometry_with_srid,
-      is_raining: true,
-      last_checked: now,
-      expires_at: expires_at
-    }
-
-    %RainStatusCache{}
-    |> RainStatusCache.changeset(attrs)
-    |> Repo.insert(on_conflict: :replace_all, conflict_target: :zone_id)
-
-    require Logger
-    Logger.info("Cached raining zone: #{zone_data.zone_id} (#{zone_data.zone_name})")
-  end
-
   defp check_zone_cache(latitude, longitude) do
     # Create point for user's location
     point = %Geo.Point{coordinates: {longitude, latitude}, srid: 4326}

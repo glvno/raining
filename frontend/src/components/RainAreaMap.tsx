@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import L from 'leaflet';
 import { DEMO_RADAR_TIMESTAMP } from '../data/demoData';
@@ -24,16 +24,20 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
     userMarker: null,
     dropletMarkers: [],
   });
-  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(null);
 
   // Check if demo mode is enabled
   const isDemoMode = searchParams.get('demo') === 'true';
 
-  // Set radar timestamp (demo mode uses fixed snapshot, otherwise fetch live)
+  // Initialize radar timestamp (demo mode uses fixed snapshot)
+  const initialTimestamp = useMemo(
+    () => (isDemoMode ? DEMO_RADAR_TIMESTAMP : null),
+    [isDemoMode]
+  );
+  const [radarTimestamp, setRadarTimestamp] = useState<number | null>(initialTimestamp);
+
+  // Fetch live radar timestamp (skip in demo mode)
   useEffect(() => {
     if (isDemoMode) {
-      // Use fixed radar timestamp from demo data
-      setRadarTimestamp(DEMO_RADAR_TIMESTAMP);
       return;
     }
 
@@ -179,7 +183,7 @@ export function RainAreaMap({ rainZone, userLocation, droplets }: RainAreaMapPro
 
     // Add rain zone polygon (but don't include it in bounds for zoom calculation)
     if (rainZone) {
-      const zoneLayer = L.geoJSON(rainZone as any, {
+      const zoneLayer = L.geoJSON(rainZone as GeoJSON.Geometry, {
         style: {
           color: '#3b82f6',
           weight: 2,

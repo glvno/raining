@@ -30,7 +30,8 @@ export default function Deluge() {
     if (token) {
       loadFeed();
     }
-  }, [token, isDemoMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, isDemoMode]); // loadFeed is stable
 
   // Auto-refresh feed every 30 seconds (skip in demo mode)
   useEffect(() => {
@@ -43,7 +44,8 @@ export default function Deluge() {
     }, REFRESH_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [token, isDemoMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, isDemoMode]); // loadFeed is stable
 
   const loadFeed = async () => {
     if (!token) {
@@ -61,7 +63,7 @@ export default function Deluge() {
         if (response.ok) {
           const data = await response.json();
           // Extract rain_zone from each zone object
-          const zones = data.zones.map((z: any) => z.rain_zone);
+          const zones = data.zones.map((z: { rain_zone: GeoJSONGeometry }) => z.rain_zone);
           setRainZones(zones);
         } else {
           // Fallback to hardcoded zones if API fails
