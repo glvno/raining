@@ -7,6 +7,7 @@ import { DropletCard } from '../components/DropletCard';
 import { RainAreaIndicator } from '../components/RainAreaIndicator';
 import { RainAreaMap } from '../components/RainAreaMap';
 import { DEMO_FEED_DATA } from '../data/demoData';
+import { isPointInPolygon } from '../utils/geoUtils';
 import type { Droplet, FeedResponse, GeoJSONGeometry } from '../types';
 
 const API_BASE = '/api';
@@ -50,12 +51,17 @@ export default function Drizzle() {
       return;
     }
 
-    // Use demo data if in demo mode (only Indiana droplets for local view)
+    // Use demo data if in demo mode
+    // Filter droplets to only those within the rain zone (simulates server-side spatial filtering)
     if (isDemoMode) {
-      // Filter to only Indiana droplets (IDs 101-109) for local Drizzle feed
-      const localDroplets = DEMO_FEED_DATA.droplets.filter(d => d.id >= 101 && d.id <= 109);
+      const rainZone = DEMO_FEED_DATA.rain_zone;
+      const localDroplets = rainZone
+        ? DEMO_FEED_DATA.droplets.filter((droplet) =>
+            isPointInPolygon(droplet.latitude, droplet.longitude, rainZone)
+          )
+        : [];
       setDroplets(localDroplets);
-      setRainZone(DEMO_FEED_DATA.rain_zone);
+      setRainZone(rainZone);
       setError(null);
       setIsLoading(false);
       return;
