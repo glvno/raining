@@ -88,6 +88,74 @@ defmodule Raining.Weather do
   end
 
   @doc """
+  Fetches precipitation grid for a bounding box.
+
+  Returns structured data for contour generation containing precipitation values
+  at grid points within the specified bounds.
+
+  ## Parameters
+
+    - `min_lat`: Minimum latitude of bounding box
+    - `max_lat`: Maximum latitude of bounding box
+    - `min_lng`: Minimum longitude of bounding box
+    - `max_lng`: Maximum longitude of bounding box
+    - `opts`: Options including:
+      - `:grid_step` - Grid resolution in degrees (default: 0.5)
+      - `:threshold` - Minimum precipitation in mm to include (default: 0.1)
+
+  ## Returns
+
+    - `{:ok, %{points: [...], bounds: {...}}}` - Precipitation grid data
+    - `{:error, :no_precipitation}` - No precipitation found in area
+    - `{:error, reason}` - API error
+
+  ## Examples
+
+      # Example result structure when precipitation is found:
+      # {:ok, %{
+      #   points: [{40.9, -87.1, 2.5}, {40.95, -87.05, 1.8}, ...],
+      #   bounds: {40.5, 41.5, -87.5, -86.5}
+      # }}
+
+  """
+  @spec get_precipitation_grid(number(), number(), number(), number(), keyword()) ::
+          {:ok, %{points: [{float(), float(), float()}], bounds: {float(), float(), float(), float()}}}
+          | {:error, :no_precipitation | term()}
+  def get_precipitation_grid(min_lat, max_lat, min_lng, max_lng, opts \\ []) do
+    grid_step = Keyword.get(opts, :grid_step, 0.5)
+    threshold = Keyword.get(opts, :threshold, 0.1)
+
+    # Generate grid points within bounding box
+    grid_points = generate_grid_points(min_lat, max_lat, min_lng, max_lng, grid_step)
+
+    if Enum.empty?(grid_points) do
+      {:error, :no_precipitation}
+    else
+      # Fetch precipitation data for all grid points in batch
+      case fetch_precipitation_batch(grid_points) do
+        {:ok, precip_data} ->
+          # Filter to points with precipitation above threshold
+          filtered_points =
+            precip_data
+            |> Enum.filter(fn {_lat, _lng, precip} -> precip >= threshold end)
+
+          if Enum.empty?(filtered_points) do
+            {:error, :no_precipitation}
+          else
+            {:ok,
+             %{
+               points: filtered_points,
+               bounds: {min_lat, max_lat, min_lng, max_lng}
+             }}
+          end
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  @doc """
   Finds all contiguous coordinates where it's currently raining, starting from the given coordinates.
 
   Uses Breadth-First Search (BFS) with 8-way connectivity to explore the coordinate grid
@@ -274,5 +342,85 @@ defmodule Raining.Weather do
   @spec round_coordinate_tuple({number(), number()}) :: {float(), float()}
   defp round_coordinate_tuple({lat, lng}) do
     {round_coordinate(lat), round_coordinate(lng)}
+  end
+
+  # Generates grid points within a bounding box
+  @spec generate_grid_points(number(), number(), number(), number(), float()) ::
+          [{float(), float()}]
+  defp generate_grid_points(min_lat, max_lat, min_lng, max_lng, grid_step) do
+    # Generate latitude points
+    lat_points =
+      min_lat
+      |> Stream.iterate(&(&1 + grid_step))
+      |> Enum.take_while(&(&1 <= max_lat))
+
+    # Generate longitude points
+    lng_points =
+      min_lng
+      |> Stream.iterate(&(&1 + grid_step))
+      |> Enum.take_while(&(&1 <= max_lng))
+
+    # Create all combinations
+    for lat <- lat_points, lng <- lng_points, do: {lat, lng}
+  end
+
+  # Fetches precipitation data for multiple points in a single API request
+  @spec fetch_precipitation_batch([{float(), float()}]) ::
+          {:ok, [{float(), float(), float()}]} | {:error, term()}
+  defp fetch_precipitation_batch([]), do: {:ok, []}
+
+  defp fetch_precipitation_batch(grid_points) do
+    # Open-Meteo supports multiple lat/lng values separated by commas
+    latitudes = grid_points |> Enum.map(&elem(&1, 0)) |> Enum.join(",")
+    longitudes = grid_points |> Enum.map(&elem(&1, 1)) |> Enum.join(",")
+
+    params = [
+      latitude: latitudes,
+      longitude: longitudes,
+      current: "rain,precipitation"
+    ]
+
+    case Req.get(@base_url, params: params) do
+      {:ok, %{status: 200, body: body}} ->
+        parse_batch_precipitation(body, grid_points)
+
+      {:ok, %{status: status}} ->
+        {:error, {:http_error, status}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  # Parses batch precipitation response
+  # Open-Meteo returns an array of objects when given multiple coordinates
+  @spec parse_batch_precipitation(map() | list(), [{float(), float()}]) ::
+          {:ok, [{float(), float(), float()}]} | {:error, term()}
+  defp parse_batch_precipitation(body, grid_points) when is_list(body) do
+    # Multiple locations - array of response objects
+    result =
+      body
+      |> Enum.zip(grid_points)
+      |> Enum.map(fn {location_data, {lat, lng}} ->
+        rain = get_in(location_data, ["current", "rain"]) || 0
+        precip = get_in(location_data, ["current", "precipitation"]) || 0
+        total_precip = rain + precip
+        {lat, lng, total_precip}
+      end)
+
+    {:ok, result}
+  end
+
+  defp parse_batch_precipitation(%{"current" => current}, [{lat, lng}]) do
+    # Single location - object with current weather
+    rain = Map.get(current, "rain", 0) || 0
+    precip = Map.get(current, "precipitation", 0) || 0
+    total_precip = rain + precip
+
+    {:ok, [{lat, lng, total_precip}]}
+  end
+
+  defp parse_batch_precipitation(_body, _grid_points) do
+    {:error, :invalid_response}
   end
 end

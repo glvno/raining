@@ -113,10 +113,10 @@ defmodule Raining.Droplets do
         get_droplets_in_zone(zone_geometry, time_window_hours)
 
       {:error, :cache_miss} ->
-        # Cache miss - try NWS first (US only), fallback to Open-Meteo
+        # Cache miss - use radar-based polygon generation
         require Logger
         Logger.info("❌ Zone Cache MISS: Querying weather APIs")
-        check_nws_and_get_feed(latitude, longitude, time_window_hours)
+        get_feed_with_radar_check(latitude, longitude, time_window_hours)
     end
   end
 
@@ -181,47 +181,68 @@ defmodule Raining.Droplets do
 
   def zone_to_geojson(_), do: nil
 
-  defp check_nws_and_get_feed(latitude, longitude, time_window_hours) do
-    # Try NWS first for US locations
-    case Weather.NWS.get_point_data(latitude, longitude) do
-      {:ok, point_data} ->
-        # US location - use NWS workflow
-        check_nws_stations_and_cache(point_data, time_window_hours)
+  defp get_feed_with_radar_check(latitude, longitude, time_window_hours) do
+    # Calculate search bounding box (2 degree radius ~ 220km)
+    bounds = calculate_search_bounds(latitude, longitude, radius: 2.0)
 
-      {:error, :outside_us} ->
-        # Non-US location - fallback to Open-Meteo
-        require Logger
-        Logger.info("Location outside US, falling back to Open-Meteo")
-        get_feed_with_weather_check(latitude, longitude, time_window_hours)
+    # Fetch precipitation grid from Open-Meteo
+    case Weather.get_precipitation_grid(elem(bounds, 0), elem(bounds, 1), elem(bounds, 2), elem(bounds, 3)) do
+      {:ok, precip_data} ->
+        # Generate contour polygon from precipitation data
+        case Weather.ContourGenerator.generate_polygon(precip_data, latitude, longitude) do
+          {:ok, polygon} ->
+            # Cache the radar-based zone
+            cache_raining_zone_radar(polygon, bounds)
+            get_droplets_in_zone(polygon, time_window_hours)
 
-      {:error, reason} ->
-        # NWS API error - fallback to Open-Meteo
-        require Logger
-        Logger.warning("NWS API error: #{inspect(reason)}, falling back to Open-Meteo")
-        get_feed_with_weather_check(latitude, longitude, time_window_hours)
-    end
-  end
+          {:error, :user_not_in_rain} ->
+            {:error, :no_rain}
 
-  defp check_nws_stations_and_cache(point_data, time_window_hours) do
-    with {:ok, stations} <- Weather.NWS.get_stations(point_data.stations_url),
-         true <- Weather.NWS.check_stations_for_rain(stations),
-         {:ok, zone_data} <- Weather.NWS.get_zone_geometry(point_data.zone_url) do
+          {:error, reason} ->
+            {:error, reason}
+        end
 
-      # It's raining! Cache the zone and return droplets
-      cache_raining_zone(zone_data)
-
-      # Convert GeoJSON to PostGIS geometry with SRID 4326
-      {:ok, geometry} = Geo.JSON.decode(zone_data.geometry)
-      geometry_with_srid = %{geometry | srid: 4326}
-      get_droplets_in_zone(geometry_with_srid, time_window_hours)
-    else
-      false ->
-        # No rain detected at stations
+      {:error, :no_precipitation} ->
         {:error, :no_rain}
 
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  defp calculate_search_bounds(lat, lng, opts) do
+    radius = Keyword.get(opts, :radius, 2.0)
+    {lat - radius, lat + radius, lng - radius, lng + radius}
+  end
+
+  defp cache_raining_zone_radar(polygon, {min_lat, max_lat, min_lng, max_lng}) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+    # Reduce cache expiration to 15 minutes (matches radar update frequency)
+    expires_at = DateTime.add(now, 15, :minute)
+
+    # Ensure polygon has SRID 4326
+    polygon_with_srid = %{polygon | srid: 4326}
+
+    # Generate zone_id from bounds and timestamp
+    unix_timestamp = DateTime.to_unix(now)
+    zone_id = "radar_#{Float.round(min_lat, 1)}-#{Float.round(max_lat, 1)}_#{Float.round(min_lng, 1)}-#{Float.round(max_lng, 1)}_#{unix_timestamp}"
+    zone_name = "Radar Precipitation Area (#{Float.round(min_lat, 1)}°, #{Float.round(min_lng, 1)}°)"
+
+    attrs = %{
+      zone_id: zone_id,
+      zone_name: zone_name,
+      geometry: polygon_with_srid,
+      is_raining: true,
+      last_checked: now,
+      expires_at: expires_at
+    }
+
+    %RainStatusCache{}
+    |> RainStatusCache.changeset(attrs)
+    |> Repo.insert(on_conflict: :replace_all, conflict_target: :zone_id)
+
+    require Logger
+    Logger.info("Cached radar zone: #{zone_id} (expires in 15 minutes)")
   end
 
   defp cache_raining_zone(zone_data) do

@@ -19,7 +19,10 @@
       "Bash(psql:*)",
       "Bash(npm install:*)",
       "Bash(npm run build:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:www.rainviewer.com)",
+      "Bash(mix phx.server:*)",
+      "Bash(mix run:*)"
     ]
   }
 }
