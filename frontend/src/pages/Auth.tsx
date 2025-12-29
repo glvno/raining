@@ -11,7 +11,6 @@ const Auth: React.FC = () => {
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
 	const [isSubmitting, setIsSubmitting] = useState(false)
-	const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
 	// Redirect to home if already authenticated
 	useEffect(() => {
@@ -23,7 +22,6 @@ const Auth: React.FC = () => {
 	const handleSubmit = async (e: FormEvent) => {
 		e.preventDefault()
 		setIsSubmitting(true)
-		setSuccessMessage(null)
 		clearError()
 
 		try {
@@ -43,7 +41,6 @@ const Auth: React.FC = () => {
 
 	const switchMode = (newMode: 'login' | 'register') => {
 		setMode(newMode)
-		setSuccessMessage(null)
 		clearError()
 	}
 
@@ -128,11 +125,6 @@ const Auth: React.FC = () => {
 					</button>
 				</form>
 
-				{successMessage && (
-					<div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-						<p className="text-sm text-green-800">{successMessage}</p>
-					</div>
-				)}
 
 				{error && (
 					<div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">

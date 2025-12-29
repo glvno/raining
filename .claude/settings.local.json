@@ -27,7 +27,10 @@
       "mcp__tidewave__get_ecto_schemas",
       "WebFetch(domain:github.com)",
       "Bash(mix test_radar_sampling:*)",
-      "mcp__tidewave__execute_sql_query"
+      "mcp__tidewave__execute_sql_query",
+      "Bash(xargs ls:*)",
+      "Bash(mix format:*)",
+      "Bash(npm run lint)"
     ]
   }
 }

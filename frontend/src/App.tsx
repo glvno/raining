@@ -1,7 +1,6 @@
 import React from 'react'
 import Auth from './pages/Auth'
 import { Route, Routes } from 'react-router'
-import Home from './pages/Home'
 import Deluge from './pages/Deluge'
 import Drizzle from './pages/Drizzle'
 import { AuthProvider } from './contexts/AuthContext'
@@ -42,7 +41,7 @@ const App: React.FC = () => {
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <Home />
+                    <Deluge />
                   </ProtectedRoute>
                 }
               />
